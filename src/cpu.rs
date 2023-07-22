@@ -66,6 +66,143 @@ lazy_static! {
         Instruction::new(0x79, "ADC", AddrMode::ABY, CPU::adc, 3, 4, CycleMode::Page),
         Instruction::new(0x61, "ADC", AddrMode::INX, CPU::adc, 2, 6, CycleMode::None),
         Instruction::new(0x71, "ADC", AddrMode::INY, CPU::adc, 2, 5, CycleMode::Page),
+        Instruction::new(0x29, "AND", AddrMode::IMM, CPU::and, 2, 2, CycleMode::None),
+        Instruction::new(0x25, "AND", AddrMode::ZPG, CPU::and, 2, 3, CycleMode::None),
+        Instruction::new(0x35, "AND", AddrMode::ZPX, CPU::and, 2, 4, CycleMode::None),
+        Instruction::new(0x2d, "AND", AddrMode::ABS, CPU::and, 3, 4, CycleMode::None),
+        Instruction::new(0x3d, "AND", AddrMode::ABX, CPU::and, 3, 4, CycleMode::Page),
+        Instruction::new(0x39, "AND", AddrMode::ABY, CPU::and, 3, 4, CycleMode::Page),
+        Instruction::new(0x21, "AND", AddrMode::INX, CPU::and, 2, 6, CycleMode::None),
+        Instruction::new(0x31, "AND", AddrMode::INY, CPU::and, 2, 5, CycleMode::Page),
+        Instruction::new(
+            0x0a,
+            "ASL",
+            AddrMode::ACC,
+            CPU::asl_acc,
+            1,
+            2,
+            CycleMode::None
+        ),
+        Instruction::new(0x06, "ASL", AddrMode::ZPG, CPU::asl, 2, 5, CycleMode::None),
+        Instruction::new(0x16, "ASL", AddrMode::ZPX, CPU::asl, 2, 6, CycleMode::None),
+        Instruction::new(0x0e, "ASL", AddrMode::ABS, CPU::asl, 3, 6, CycleMode::None),
+        Instruction::new(0x1e, "ASL", AddrMode::ABX, CPU::asl, 3, 7, CycleMode::None),
+        Instruction::new(
+            0x90,
+            "BCC",
+            AddrMode::REL,
+            CPU::bcc,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(
+            0xb0,
+            "BCS",
+            AddrMode::REL,
+            CPU::bcs,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(
+            0xf0,
+            "BEQ",
+            AddrMode::REL,
+            CPU::beq,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(0x24, "BIT", AddrMode::ZPG, CPU::bit, 2, 3, CycleMode::None),
+        Instruction::new(0x2c, "BIT", AddrMode::ABS, CPU::bit, 3, 4, CycleMode::None),
+        Instruction::new(
+            0x30,
+            "BMI",
+            AddrMode::REL,
+            CPU::bmi,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(
+            0xd0,
+            "BNE",
+            AddrMode::REL,
+            CPU::bne,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(
+            0x10,
+            "BPL",
+            AddrMode::REL,
+            CPU::bpl,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(0x00, "BRK", AddrMode::IMP, CPU::brk, 1, 7, CycleMode::None),
+        Instruction::new(
+            0x50,
+            "BVC",
+            AddrMode::REL,
+            CPU::bvc,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(
+            0x70,
+            "BVS",
+            AddrMode::REL,
+            CPU::bvs,
+            2,
+            2,
+            CycleMode::Branch
+        ),
+        Instruction::new(0x18, "CLC", AddrMode::IMP, CPU::clc, 1, 2, CycleMode::None),
+        Instruction::new(0xd8, "CLD", AddrMode::IMP, CPU::cld, 1, 2, CycleMode::None),
+        Instruction::new(0x58, "CLI", AddrMode::IMP, CPU::cli, 1, 2, CycleMode::None),
+        Instruction::new(0xb8, "CLV", AddrMode::IMP, CPU::clv, 1, 2, CycleMode::None),
+        Instruction::new(0xc9, "CMP", AddrMode::IMM, CPU::cmp, 2, 2, CycleMode::None),
+        Instruction::new(0xc5, "CMP", AddrMode::ZPG, CPU::cmp, 2, 3, CycleMode::None),
+        Instruction::new(0xd5, "CMP", AddrMode::ZPX, CPU::cmp, 2, 4, CycleMode::None),
+        Instruction::new(0xcd, "CMP", AddrMode::ABS, CPU::cmp, 3, 4, CycleMode::None),
+        Instruction::new(0xdd, "CMP", AddrMode::ABX, CPU::cmp, 3, 4, CycleMode::Page),
+        Instruction::new(0xd9, "CMP", AddrMode::ABY, CPU::cmp, 3, 4, CycleMode::Page),
+        Instruction::new(0xc1, "CMP", AddrMode::INX, CPU::cmp, 2, 6, CycleMode::None),
+        Instruction::new(0xd1, "CMP", AddrMode::INY, CPU::cmp, 2, 5, CycleMode::Page),
+        Instruction::new(0xe0, "CPX", AddrMode::IMM, CPU::cpx, 2, 2, CycleMode::None),
+        Instruction::new(0xe4, "CPX", AddrMode::ZPG, CPU::cpx, 2, 3, CycleMode::None),
+        Instruction::new(0xec, "CPX", AddrMode::ABS, CPU::cpx, 3, 4, CycleMode::None),
+        Instruction::new(0xc0, "CPY", AddrMode::IMM, CPU::cpy, 2, 2, CycleMode::None),
+        Instruction::new(0xc4, "CPY", AddrMode::ZPG, CPU::cpy, 2, 3, CycleMode::None),
+        Instruction::new(0xcc, "CPY", AddrMode::ABS, CPU::cpy, 3, 4, CycleMode::None),
+        Instruction::new(0xc6, "DEC", AddrMode::ZPG, CPU::dec, 2, 5, CycleMode::None),
+        Instruction::new(0xd6, "DEC", AddrMode::ZPX, CPU::dec, 2, 6, CycleMode::None),
+        Instruction::new(0xce, "DEC", AddrMode::ABS, CPU::dec, 3, 6, CycleMode::None),
+        Instruction::new(0xde, "DEC", AddrMode::ABX, CPU::dec, 3, 7, CycleMode::None),
+        Instruction::new(0xca, "DEX", AddrMode::IMP, CPU::dex, 1, 2, CycleMode::None),
+        Instruction::new(0x88, "DEY", AddrMode::IMP, CPU::dey, 1, 2, CycleMode::None),
+        Instruction::new(0x49, "EOR", AddrMode::IMM, CPU::eor, 2, 2, CycleMode::None),
+        Instruction::new(0x45, "EOR", AddrMode::ZPG, CPU::eor, 2, 3, CycleMode::None),
+        Instruction::new(0x55, "EOR", AddrMode::ZPX, CPU::eor, 2, 4, CycleMode::None),
+        Instruction::new(0x4d, "EOR", AddrMode::ABS, CPU::eor, 3, 4, CycleMode::None),
+        Instruction::new(0x5d, "EOR", AddrMode::ABX, CPU::eor, 3, 4, CycleMode::None),
+        Instruction::new(0x59, "EOR", AddrMode::ABY, CPU::eor, 3, 4, CycleMode::None),
+        Instruction::new(0x41, "EOR", AddrMode::INX, CPU::eor, 2, 6, CycleMode::None),
+        Instruction::new(0x51, "EOR", AddrMode::INY, CPU::eor, 2, 5, CycleMode::None),
+        Instruction::new(0xe6, "INC", AddrMode::ZPG, CPU::inc, 2, 5, CycleMode::None),
+        Instruction::new(0xf6, "INC", AddrMode::ZPX, CPU::inc, 2, 6, CycleMode::None),
+        Instruction::new(0xee, "INC", AddrMode::ABS, CPU::inc, 3, 6, CycleMode::None),
+        Instruction::new(0xfe, "INC", AddrMode::ABX, CPU::inc, 3, 7, CycleMode::None),
+        Instruction::new(0xe8, "INX", AddrMode::IMP, CPU::inx, 1, 2, CycleMode::None),
+        Instruction::new(0xc8, "INY", AddrMode::IMP, CPU::iny, 1, 2, CycleMode::None),
+        Instruction::new(0x4c, "JMP", AddrMode::ABS, CPU::jmp, 3, 3, CycleMode::None),
+        Instruction::new(0x6c, "JMP", AddrMode::IND, CPU::jmp, 3, 5, CycleMode::None),
+        Instruction::new(0x20, "JSR", AddrMode::ABS, CPU::jsr, 3, 6, CycleMode::None),
     ];
     static ref INST_MAP: HashMap<u8, &'static Instruction> = {
         let mut map = HashMap::new();
@@ -79,7 +216,7 @@ lazy_static! {
 fn get_inst(opcode: u8) -> &'static Instruction {
     *INST_MAP
         .get(&opcode)
-        .expect(&format!("Invalid opcode 0x{:02X}", opcode))
+        .expect(&format!("Invalid opcode 0x{:02x}", opcode))
 }
 
 struct Flags {
@@ -178,8 +315,8 @@ impl CPU {
     }
 
     fn read16(&self, addr: u16) -> u16 {
-        let low = self.bus.read8(addr) as u16;
-        let high = self.bus.read8(addr.wrapping_add(1)) as u16;
+        let low = self.read8(addr) as u16;
+        let high = self.read8(addr.wrapping_add(1)) as u16;
         low + (high << 8)
     }
 
@@ -188,8 +325,29 @@ impl CPU {
     }
 
     fn write16(&mut self, addr: u16, data: u16) {
-        self.bus.write8(addr, data as u8);
-        self.bus.write8(addr.wrapping_add(1), (data >> 8) as u8);
+        self.write8(addr, data as u8);
+        self.write8(addr.wrapping_add(1), (data >> 8) as u8);
+    }
+
+    fn push8(&mut self, data: u8) {
+        self.write8(self.s as u16 + 0x0100, data);
+        self.s = self.s.wrapping_sub(1);
+    }
+
+    fn push16(&mut self, data: u16) {
+        self.push8((data >> 8) as u8);
+        self.push8(data as u8);
+    }
+
+    fn pop8(&mut self) -> u8 {
+        self.s = self.s.wrapping_add(1);
+        self.read8(self.s as u16 + 0x0100)
+    }
+
+    fn pop16(&mut self) -> u16 {
+        let low = self.pop8();
+        let high = self.pop8();
+        low as u16 + ((high as u16) << 8)
     }
 
     fn get_addr(&self, mode: &AddrMode) -> u16 {
@@ -224,6 +382,11 @@ impl CPU {
             if self.read8(self.pc) == 0x00 {
                 return;
             }
+            println!(
+                "pc = 0x{:04x}, opcode = 0x{:02x}",
+                self.pc,
+                self.read8(self.pc)
+            );
             let inst = get_inst(self.read8(self.pc));
             self.addr = self.get_addr(&inst.addr_mode);
             self.extra_cycle = 0;
@@ -241,6 +404,161 @@ impl CPU {
         self.p.v = (a ^ r) & (b ^ r) & 0x80 != 0;
         self.update_zn(self.a);
     }
+
+    fn and(&mut self) {
+        self.a &= self.read8(self.addr);
+        self.update_zn(self.a);
+    }
+
+    fn asl_acc(&mut self) {
+        self.p.c = self.a & 0x80 != 0;
+        self.a <<= 1;
+        self.update_zn(self.a);
+    }
+
+    fn asl(&mut self) {
+        let mut data = self.read8(self.addr);
+        self.p.c = data & 0x80 != 0;
+        data <<= 1;
+        self.write8(self.addr, data);
+        self.update_zn(data);
+    }
+
+    fn branch(&mut self, cond: bool) {
+        if cond {
+            self.pc = self.pc.wrapping_add(self.addr);
+        }
+    }
+
+    fn bcc(&mut self) {
+        self.branch(self.p.c == false);
+    }
+
+    fn bcs(&mut self) {
+        self.branch(self.p.c == true);
+    }
+
+    fn beq(&mut self) {
+        self.branch(self.p.z == true);
+    }
+
+    fn bit(&mut self) {
+        let data = self.read8(self.addr);
+        self.p.z = self.a & data == 0;
+        self.p.v = data & 0x40 != 0;
+        self.p.n = data & 0x80 != 0;
+    }
+
+    fn bmi(&mut self) {
+        self.branch(self.p.n == true);
+    }
+
+    fn bne(&mut self) {
+        self.branch(self.p.z == false);
+    }
+
+    fn bpl(&mut self) {
+        self.branch(self.p.n == false);
+    }
+
+    fn brk(&mut self) {
+        if self.p.i {
+            return;
+        }
+        self.p.b = true;
+        self.push16(self.pc.wrapping_add(2));
+        self.push8(self.p.get());
+        self.p.i = true;
+        self.pc = self.read16(0xfffe).wrapping_sub(1);
+    }
+
+    fn bvc(&mut self) {
+        self.branch(self.p.v == false);
+    }
+
+    fn bvs(&mut self) {
+        self.branch(self.p.v == true);
+    }
+
+    fn clc(&mut self) {
+        self.p.c = false;
+    }
+
+    fn cld(&mut self) {
+        self.p.d = false;
+    }
+
+    fn cli(&mut self) {
+        self.p.i = false;
+    }
+
+    fn clv(&mut self) {
+        self.p.v = false;
+    }
+
+    fn compare(&mut self, register: u8) {
+        let data = self.read8(self.addr);
+        self.p.c = register >= data;
+        self.update_zn(register.wrapping_sub(data));
+    }
+
+    fn cmp(&mut self) {
+        self.compare(self.a);
+    }
+
+    fn cpx(&mut self) {
+        self.compare(self.x);
+    }
+
+    fn cpy(&mut self) {
+        self.compare(self.y);
+    }
+
+    fn dec(&mut self) {
+        let data = self.read8(self.addr).wrapping_sub(1);
+        self.write8(self.addr, data);
+        self.update_zn(data);
+    }
+
+    fn dex(&mut self) {
+        self.x = self.x.wrapping_sub(1);
+        self.update_zn(self.x);
+    }
+
+    fn dey(&mut self) {
+        self.y = self.y.wrapping_sub(1);
+        self.update_zn(self.y);
+    }
+
+    fn eor(&mut self) {
+        self.a ^= self.read8(self.addr);
+        self.update_zn(self.a);
+    }
+
+    fn inc(&mut self) {
+        let data = self.read8(self.addr).wrapping_add(1);
+        self.write8(self.addr, data);
+        self.update_zn(data);
+    }
+
+    fn inx(&mut self) {
+        self.x = self.x.wrapping_add(1);
+        self.update_zn(self.x);
+    }
+
+    fn iny(&mut self) {
+        self.y = self.y.wrapping_add(1);
+        self.update_zn(self.y);
+    }
+
+    fn jmp(&mut self) {
+        self.pc = self.addr.wrapping_sub(3);
+    }
+
+    fn jsr(&mut self) {
+        self.push16(self.pc.wrapping_add(2));
+        self.pc = self.addr.wrapping_sub(3);
+    }
 }
 
 #[cfg(test)]
@@ -254,10 +572,108 @@ mod test {
         cpu.run(|cpu| {
             cpu.a = 0xab;
             cpu.p.c = true;
-            cpu.write8(0x0000, 0x69);
-            cpu.write8(0x0001, 0x78);
+            cpu.write8(0x0000, 0x65);
+            cpu.write8(0x0001, 0x12);
+            cpu.write8(0x0012, 0x78);
         });
         assert_eq!(cpu.a, 0x24);
         assert_eq!(cpu.p.get(), 0x25);
+    }
+
+    #[test]
+    fn test_and() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.a = 0xa5;
+            cpu.x = 0xa2;
+            cpu.write8(0x0000, 0x35);
+            cpu.write8(0x0001, 0xab);
+            cpu.write8(0x4d, 0x91);
+        });
+        assert_eq!(cpu.a, 0x81);
+        assert_eq!(cpu.p.get(), 0xa4);
+    }
+
+    #[test]
+    fn test_asl_acc() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.a = 0xaa;
+            cpu.write8(0x0000, 0x0a);
+        });
+        assert_eq!(cpu.a, 0x54);
+        assert_eq!(cpu.p.get(), 0x25);
+    }
+
+    #[test]
+    fn test_asl() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.write8(0x0000, 0x0e);
+            cpu.write16(0x0001, 0x0200);
+            cpu.write8(0x0200, 0x38);
+        });
+        assert_eq!(cpu.read8(0x0200), 0x70);
+        assert_eq!(cpu.p.get(), 0x24);
+    }
+
+    #[test]
+    fn test_bcc() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.a = 0x84;
+            cpu.write8(0x0000, 0x90);
+            cpu.write8(0x0001, 0x25);
+            cpu.write8(0x0027, 0x69);
+            cpu.write8(0x0028, 0x85);
+        });
+        assert_eq!(cpu.a, 0x09);
+        assert_eq!(cpu.p.get(), 0x65);
+    }
+
+    #[test]
+    fn test_bcs() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.a = 0xa5;
+            cpu.p.c = true;
+            cpu.pc = 0x0200;
+            cpu.write8(0x0200, 0xb0);
+            cpu.write8(0x0201, 0x82);
+            cpu.write8(0x0184, 0x29);
+            cpu.write8(0x0185, 0x84);
+        });
+        assert_eq!(cpu.a, 0x84);
+        assert_eq!(cpu.p.get(), 0xa5);
+    }
+
+    #[test]
+    fn test_beq() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.x = 0x77;
+            cpu.p.z = true;
+            cpu.write8(0x0000, 0xf0);
+            cpu.write8(0x0001, 0x65);
+            cpu.write8(0x0067, 0x1e);
+            cpu.write16(0x0068, 0x0456);
+            cpu.write8(0x04cd, 0x56);
+        });
+        assert_eq!(cpu.read8(0x04cd), 0xac);
+        assert_eq!(cpu.p.get(), 0xa4);
+    }
+
+    #[test]
+    fn test_bit() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.a = 0x5a;
+            cpu.write8(0x0000, 0x24);
+            cpu.write8(0x0001, 0x35);
+            cpu.write8(0x0035, 0xe5);
+        });
+        assert_eq!(cpu.a, 0x5a);
+        assert_eq!(cpu.read8(0x0035), 0xe5);
+        assert_eq!(cpu.p.get(), 0xe4);
     }
 }

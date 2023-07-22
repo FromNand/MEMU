@@ -15,7 +15,7 @@ impl Bus {
         match addr {
             0x0000..=0x1fff => self.work_ram[(addr & 0x07ff) as usize],
             0xfffa..=0xffff => self.int_vec[(addr - 0xfffa) as usize],
-            _ => todo!("Read from 0x{:04X}", addr),
+            _ => todo!("Read from 0x{:04x}", addr),
         }
     }
 
@@ -23,7 +23,7 @@ impl Bus {
         match addr {
             0x0000..=0x1fff => self.work_ram[(addr & 0x07ff) as usize] = data,
             0xfffa..=0xffff => self.int_vec[(addr - 0xfffa) as usize] = data,
-            _ => todo!("Write 0x{:02X} to 0x{:04X}", data, addr),
+            _ => todo!("Write 0x{:02x} to 0x{:04x}", data, addr),
         }
     }
 }
