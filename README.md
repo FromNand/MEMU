@@ -1,1 +1,2 @@
-test bad instruction
+implement all official instructions
+implement all unofficial instructions

@@ -58,9 +58,15 @@ impl Instruction {
 
 lazy_static! {
     static ref INST_LIST: Vec<Instruction> = vec![
-        Instruction::new(0x00, "ABC", AddrMode::ABS, CPU::adc, 0, 0, CycleMode::Branch),
+        Instruction::new(0x69, "ADC", AddrMode::IMM, CPU::adc, 2, 2, CycleMode::None),
+        Instruction::new(0x65, "ADC", AddrMode::ZPG, CPU::adc, 2, 3, CycleMode::None),
+        Instruction::new(0x75, "ADC", AddrMode::ZPX, CPU::adc, 2, 4, CycleMode::None),
+        Instruction::new(0x6d, "ADC", AddrMode::ABS, CPU::adc, 3, 4, CycleMode::None),
+        Instruction::new(0x7d, "ADC", AddrMode::ABX, CPU::adc, 3, 4, CycleMode::Page),
+        Instruction::new(0x79, "ADC", AddrMode::ABY, CPU::adc, 3, 4, CycleMode::Page),
+        Instruction::new(0x61, "ADC", AddrMode::INX, CPU::adc, 2, 6, CycleMode::None),
+        Instruction::new(0x71, "ADC", AddrMode::INY, CPU::adc, 2, 5, CycleMode::Page),
     ];
-
     static ref INST_MAP: HashMap<u8, &'static Instruction> = {
         let mut map = HashMap::new();
         for inst in &*INST_LIST {
@@ -71,7 +77,9 @@ lazy_static! {
 }
 
 fn get_inst(opcode: u8) -> &'static Instruction {
-    *INST_MAP.get(&opcode).expect(&format!("Invalid opcode 0x{:02X}", opcode))
+    *INST_MAP
+        .get(&opcode)
+        .expect(&format!("Invalid opcode 0x{:02X}", opcode))
 }
 
 struct Flags {
@@ -127,7 +135,7 @@ impl Flags {
     }
 }
 
-struct CPU {
+pub struct CPU {
     a: u8,
     x: u8,
     y: u8,
@@ -135,12 +143,12 @@ struct CPU {
     p: Flags,
     pc: u16,
     bus: Bus,
-    inst: &'static Instruction,
+    addr: u16,
     extra_cycle: usize,
 }
 
 impl CPU {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut cpu = CPU {
             a: 0,
             x: 0,
@@ -158,7 +166,7 @@ impl CPU {
             },
             pc: 0,
             bus: Bus::new(),
-            inst: get_inst(0x00),
+            addr: 0,
             extra_cycle: 0,
         };
         cpu.pc = cpu.read16(0xfffc);
@@ -198,28 +206,58 @@ impl CPU {
             AddrMode::ABY => self.read16(addr).wrapping_add(self.y as u16),
             AddrMode::IND => self.read16(self.read16(addr)),
             AddrMode::INX => self.read16(self.read8(addr).wrapping_add(self.x) as u16),
-            AddrMode::INY => self.read16(self.read8(addr) as u16).wrapping_add(self.y as u16),
+            AddrMode::INY => self
+                .read16(self.read8(addr) as u16)
+                .wrapping_add(self.y as u16),
             AddrMode::REL => self.read8(addr) as i8 as u16,
         }
     }
 
-    fn update_zn_flags(&mut self, data: u8) {
+    fn update_zn(&mut self, data: u8) {
         self.p.z = data == 0;
         self.p.n = (data & 0x80) != 0;
     }
 
-    fn run<F: Fn(&CPU)>(&mut self, callback: F) {
+    pub fn run<F: Fn(&mut CPU)>(&mut self, callback: F) {
         callback(self);
         loop {
-            self.inst = get_inst(self.read8(self.pc));
+            if self.read8(self.pc) == 0x00 {
+                return;
+            }
+            let inst = get_inst(self.read8(self.pc));
+            self.addr = self.get_addr(&inst.addr_mode);
             self.extra_cycle = 0;
-            (self.inst.function)(self);
-            self.pc = self.pc.wrapping_add(self.inst.length);
-            // let cycle: inst.cycle + self.extra_cycle;
+            (inst.function)(self);
+            self.pc = self.pc.wrapping_add(inst.length);
         }
     }
 
-    fn adc(cpu: &mut CPU) {
-        
+    fn adc(&mut self) {
+        let a = self.a as u16;
+        let b = self.read8(self.addr) as u16;
+        let r = a.wrapping_add(b).wrapping_add(self.p.c as u16);
+        self.a = r as u8;
+        self.p.c = r > 0xff;
+        self.p.v = (a ^ r) & (b ^ r) & 0x80 != 0;
+        self.update_zn(self.a);
+    }
+}
+
+#[cfg(test)]
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_adc() {
+        let mut cpu = CPU::new();
+        cpu.run(|cpu| {
+            cpu.a = 0xab;
+            cpu.p.c = true;
+            cpu.write8(0x0000, 0x69);
+            cpu.write8(0x0001, 0x78);
+        });
+        assert_eq!(cpu.a, 0x24);
+        assert_eq!(cpu.p.get(), 0x25);
     }
 }
