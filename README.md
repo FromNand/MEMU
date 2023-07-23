@@ -1,1 +1,1 @@
-support binary snake game & snake.nes
+pub CPU::bus

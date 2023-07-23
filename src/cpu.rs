@@ -329,7 +329,7 @@ pub struct CPU {
     s: u8,
     p: Flags,
     pc: u16,
-    bus: Bus,
+    pub bus: Bus,
     addr: u16,
     extra_cycle: usize,
 }
@@ -348,7 +348,6 @@ impl CPU {
             extra_cycle: 0,
         };
         cpu.pc = cpu.read16(0xfffc);
-        cpu.pc = 0xc000;
         cpu
     }
 
