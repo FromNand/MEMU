@@ -1,2 +1,1 @@
-implement all official instructions (count number of $)
-implement all unofficial instructions
+support binary snake game & snake.nes

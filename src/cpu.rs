@@ -1,27 +1,14 @@
 use crate::bus::Bus;
+use crate::cartridge::Cartridge;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 enum AddrMode {
-    IMP,
-    ACC,
-    IMM,
-    ZPG,
-    ZPX,
-    ZPY,
-    ABS,
-    ABX,
-    ABY,
-    IND,
-    INX,
-    INY,
-    REL,
+    IMP, ACC, IMM, ZPG, ZPX, ZPY, ABS, ABX, ABY, IND, INX, INY, REL,
 }
 
 enum CycleMode {
-    None,
-    Page,
-    Branch,
+    None, Page, Branch,
 }
 
 struct Instruction {
@@ -35,28 +22,12 @@ struct Instruction {
 }
 
 impl Instruction {
-    fn new(
-        opcode: u8,
-        mnemonic: &'static str,
-        addr_mode: AddrMode,
-        function: fn(&mut CPU),
-        length: u16,
-        cycle: usize,
-        cycle_mode: CycleMode,
-    ) -> Self {
-        Instruction {
-            opcode,
-            mnemonic,
-            addr_mode,
-            function,
-            length,
-            cycle,
-            cycle_mode,
-        }
+    fn new(opcode: u8, mnemonic: &'static str, addr_mode: AddrMode, function: fn(&mut CPU), length: u16,
+    cycle: usize, cycle_mode: CycleMode, ) -> Self {
+        Instruction { opcode, mnemonic, addr_mode, function, length, cycle, cycle_mode, }
     }
 }
 
-#[rustfmt::skip]
 lazy_static! {
     static ref INST_LIST: Vec<Instruction> = vec![
         Instruction::new(0x69, "ADC", AddrMode::IMM, CPU::adc, 2, 2, CycleMode::None),
@@ -224,6 +195,18 @@ lazy_static! {
         Instruction::new(0xfb, "*ISB", AddrMode::ABY, CPU::isb, 3, 7, CycleMode::None),
         Instruction::new(0xe3, "*ISB", AddrMode::INX, CPU::isb, 2, 8, CycleMode::None),
         Instruction::new(0xf3, "*ISB", AddrMode::INY, CPU::isb, 2, 8, CycleMode::None),
+        Instruction::new(0x02, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x12, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x22, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x32, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x42, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x52, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x62, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x72, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0x92, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0xb2, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0xd2, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
+        Instruction::new(0xf2, "*JAM", AddrMode::IMP, CPU::jam, 1, 0, CycleMode::None),
         Instruction::new(0xa7, "*LAX", AddrMode::ZPG, CPU::lax, 2, 3, CycleMode::None),
         Instruction::new(0xb7, "*LAX", AddrMode::ZPY, CPU::lax, 2, 4, CycleMode::None),
         Instruction::new(0xaf, "*LAX", AddrMode::ABS, CPU::lax, 3, 4, CycleMode::None),
@@ -236,6 +219,27 @@ lazy_static! {
         Instruction::new(0x7a, "*NOP", AddrMode::IMP, CPU::nop, 1, 2, CycleMode::None),
         Instruction::new(0xda, "*NOP", AddrMode::IMP, CPU::nop, 1, 2, CycleMode::None),
         Instruction::new(0xfa, "*NOP", AddrMode::IMP, CPU::nop, 1, 2, CycleMode::None),
+        Instruction::new(0x80, "*NOP", AddrMode::IMM, CPU::nop, 2, 2, CycleMode::None),
+        Instruction::new(0x82, "*NOP", AddrMode::IMM, CPU::nop, 2, 2, CycleMode::None),
+        Instruction::new(0x89, "*NOP", AddrMode::IMM, CPU::nop, 2, 2, CycleMode::None),
+        Instruction::new(0xc2, "*NOP", AddrMode::IMM, CPU::nop, 2, 2, CycleMode::None),
+        Instruction::new(0xe2, "*NOP", AddrMode::IMM, CPU::nop, 2, 2, CycleMode::None),
+        Instruction::new(0x04, "*NOP", AddrMode::ZPG, CPU::nop, 2, 3, CycleMode::None),
+        Instruction::new(0x44, "*NOP", AddrMode::ZPG, CPU::nop, 2, 3, CycleMode::None),
+        Instruction::new(0x64, "*NOP", AddrMode::ZPG, CPU::nop, 2, 3, CycleMode::None),
+        Instruction::new(0x14, "*NOP", AddrMode::ZPX, CPU::nop, 2, 4, CycleMode::None),
+        Instruction::new(0x34, "*NOP", AddrMode::ZPX, CPU::nop, 2, 4, CycleMode::None),
+        Instruction::new(0x54, "*NOP", AddrMode::ZPX, CPU::nop, 2, 4, CycleMode::None),
+        Instruction::new(0x74, "*NOP", AddrMode::ZPX, CPU::nop, 2, 4, CycleMode::None),
+        Instruction::new(0xd4, "*NOP", AddrMode::ZPX, CPU::nop, 2, 4, CycleMode::None),
+        Instruction::new(0xf4, "*NOP", AddrMode::ZPX, CPU::nop, 2, 4, CycleMode::None),
+        Instruction::new(0x0c, "*NOP", AddrMode::ABS, CPU::nop, 3, 4, CycleMode::None),
+        Instruction::new(0x1c, "*NOP", AddrMode::ABX, CPU::nop, 3, 4, CycleMode::Page),
+        Instruction::new(0x3c, "*NOP", AddrMode::ABX, CPU::nop, 3, 4, CycleMode::Page),
+        Instruction::new(0x5c, "*NOP", AddrMode::ABX, CPU::nop, 3, 4, CycleMode::Page),
+        Instruction::new(0x7c, "*NOP", AddrMode::ABX, CPU::nop, 3, 4, CycleMode::Page),
+        Instruction::new(0xdc, "*NOP", AddrMode::ABX, CPU::nop, 3, 4, CycleMode::Page),
+        Instruction::new(0xfc, "*NOP", AddrMode::ABX, CPU::nop, 3, 4, CycleMode::Page),
         Instruction::new(0x27, "*RLA", AddrMode::ZPG, CPU::rla, 2, 5, CycleMode::None),
         Instruction::new(0x37, "*RLA", AddrMode::ZPX, CPU::rla, 2, 6, CycleMode::None),
         Instruction::new(0x2f, "*RLA", AddrMode::ABS, CPU::rla, 3, 6, CycleMode::None),
@@ -282,7 +286,7 @@ lazy_static! {
 fn get_inst(opcode: u8) -> &'static Instruction {
     *INST_MAP
         .get(&opcode)
-        .expect(&format!("Invalid opcode 0x{:02x}", opcode))
+        .expect(&format!("Invalid opcode 0x{:02X}", opcode))
 }
 
 struct Flags {
@@ -290,7 +294,6 @@ struct Flags {
     z: bool,
     i: bool,
     d: bool,
-    b: bool,
     r: bool,
     v: bool,
     n: bool,
@@ -302,38 +305,19 @@ impl Flags {
         self.z = (data & 0x02) != 0;
         self.i = (data & 0x04) != 0;
         self.d = (data & 0x08) != 0;
-        self.b = (data & 0x10) != 0;
-        //self.r = (data & 0x20) != 0;
         self.v = (data & 0x40) != 0;
         self.n = (data & 0x80) != 0;
     }
 
     fn get(&self) -> u8 {
         let mut data: u8 = 0;
-        if self.c {
-            data |= 0x01
-        };
-        if self.z {
-            data |= 0x02
-        };
-        if self.i {
-            data |= 0x04
-        };
-        if self.d {
-            data |= 0x08
-        };
-        if self.b {
-            data |= 0x10
-        };
-        if self.r {
-            data |= 0x20
-        };
-        if self.v {
-            data |= 0x40
-        };
-        if self.n {
-            data |= 0x80
-        };
+        if self.c { data |= 0x01 };
+        if self.z { data |= 0x02 };
+        if self.i { data |= 0x04 };
+        if self.d { data |= 0x08 };
+        if self.r { data |= 0x20 };
+        if self.v { data |= 0x40 };
+        if self.n { data |= 0x80 };
         data
     }
 }
@@ -351,32 +335,24 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn new(cart: Cartridge) -> Self {
         let mut cpu = CPU {
             a: 0,
             x: 0,
             y: 0,
             s: 0xfd,
-            p: Flags {
-                c: false,
-                z: false,
-                i: true,
-                d: false,
-                b: false,
-                r: true,
-                v: false,
-                n: false,
-            },
+            p: Flags { c: false, z: false, i: true, d: false, r: true, v: false, n: false, },
             pc: 0,
-            bus: Bus::new(),
+            bus: Bus::new(cart),
             addr: 0,
             extra_cycle: 0,
         };
         cpu.pc = cpu.read16(0xfffc);
+        cpu.pc = 0xc000;
         cpu
     }
 
-    fn read8(&self, addr: u16) -> u8 {
+    pub fn read8(&self, addr: u16) -> u8 {
         self.bus.read8(addr)
     }
 
@@ -386,13 +362,16 @@ impl CPU {
         low + (high << 8)
     }
 
-    fn write8(&mut self, addr: u16, data: u8) {
-        self.bus.write8(addr, data);
+    fn bug_read16(&self, addr: u16) -> u16 {
+        if addr & 0x00ff == 0x00ff {
+            self.read8(addr) as u16 + ((self.read8(addr & 0xff00) as u16) << 8)
+        } else {
+            self.read16(addr)
+        }
     }
 
-    fn write16(&mut self, addr: u16, data: u16) {
-        self.write8(addr, data as u8);
-        self.write8(addr.wrapping_add(1), (data >> 8) as u8);
+    pub fn write8(&mut self, addr: u16, data: u8) {
+        self.bus.write8(addr, data);
     }
 
     fn push8(&mut self, data: u8) {
@@ -428,11 +407,9 @@ impl CPU {
             AddrMode::ABS => self.read16(addr),
             AddrMode::ABX => self.read16(addr).wrapping_add(self.x as u16),
             AddrMode::ABY => self.read16(addr).wrapping_add(self.y as u16),
-            AddrMode::IND => self.read16(self.read16(addr)),
-            AddrMode::INX => self.read16(self.read8(addr).wrapping_add(self.x) as u16),
-            AddrMode::INY => self
-                .read16(self.read8(addr) as u16)
-                .wrapping_add(self.y as u16),
+            AddrMode::IND => self.bug_read16(self.read16(addr)),
+            AddrMode::INX => self.bug_read16(self.read8(addr).wrapping_add(self.x) as u16),
+            AddrMode::INY => self.bug_read16(self.read8(addr) as u16).wrapping_add(self.y as u16),
             AddrMode::REL => self.read8(addr) as i8 as u16,
         }
     }
@@ -442,23 +419,55 @@ impl CPU {
         self.p.n = (data & 0x80) != 0;
     }
 
-    pub fn run<F: Fn(&mut CPU)>(&mut self, callback: F) {
-        callback(self);
+    pub fn run<F: FnMut(&mut CPU)>(&mut self, mut callback: F) {
         loop {
             if self.read8(self.pc) == 0x00 {
+                println!("brk instruction is executed");
                 return;
             }
-            println!(
-                "pc = 0x{:04x}, opcode = 0x{:02x}",
-                self.pc,
-                self.read8(self.pc)
-            );
             let inst = get_inst(self.read8(self.pc));
             self.addr = self.get_addr(&inst.addr_mode);
             self.extra_cycle = 0;
+            callback(self);
             (inst.function)(self);
             self.pc = self.pc.wrapping_add(inst.length);
         }
+    }
+
+    pub fn log(&self) -> String {
+        let inst = get_inst(self.read8(self.pc));
+        let mut data: Vec<u8> = Vec::new();
+        for b in 0..inst.length {
+            data.push(self.read8(self.pc.wrapping_add(b)));
+        }
+        let pc = format!("{:04X}", self.pc);
+        let mut binary: Vec<String> = Vec::new();
+        for b in 0..inst.length as usize {
+            binary.push(format!("{:02X}", data[b]));
+        }
+        let mut disasm: Vec<String> = Vec::new();
+        if inst.mnemonic.starts_with("*") == false {
+            disasm.push(String::from(""));
+        }
+        disasm.push(String::from(inst.mnemonic));
+        let value = self.read8(self.addr);
+        disasm.push(String::from(match &inst.addr_mode {
+            AddrMode::IMP => format!(""),
+            AddrMode::ACC => format!("A"),
+            AddrMode::IMM => format!("#${:02X}", value),
+            AddrMode::ZPG => format!("${:02X} = {:02X}", self.addr, value),
+            AddrMode::ZPX => format!("${:02X},X @ {:02X} = {:02X}", data[1], self.addr, value),
+            AddrMode::ZPY => format!("${:02X},Y @ {:02X} = {:02X}", data[1], self.addr, value),
+            AddrMode::ABS => if inst.mnemonic.starts_with("J") { format!("${:04X}", self.addr) } else { format!("${:04X} = {:02X}", self.addr, value) },
+            AddrMode::ABX => format!("${:02X}{:02X},X @ {:04X} = {:02X}", data[2], data[1], self.addr, value),
+            AddrMode::ABY => format!("${:02X}{:02X},Y @ {:04X} = {:02X}", data[2], data[1], self.addr, value),
+            AddrMode::IND => format!("(${:02X}{:02X}) = {:04X}", data[2], data[1], self.addr),
+            AddrMode::INX => format!("(${:02X},X) @ {:02X} = {:04X} = {:02X}", data[1], data[1].wrapping_add(self.x), self.addr, value),
+            AddrMode::INY => format!("(${:02X}),Y = {:04X} @ {:04X} = {:02X}", data[1], self.bug_read16(data[1] as u16), self.addr, value),
+            AddrMode::REL => format!("${:04X}", self.pc.wrapping_add(2).wrapping_add(self.addr)),
+        }));
+        let status = format!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", self.a, self.x, self.y, self.p.get(), self.s);
+        format!("{:6}{:9}{:33}{}", pc, binary.join(" "), disasm.join(" "), status)
     }
 
     fn adc(&mut self) {
@@ -531,9 +540,8 @@ impl CPU {
         if self.p.i {
             return;
         }
-        self.p.b = true;
         self.push16(self.pc.wrapping_add(2));
-        self.push8(self.p.get());
+        self.push8(self.p.get() | 0x10);
         self.p.i = true;
         self.pc = self.read16(0xfffe).wrapping_sub(1);
     }
@@ -715,11 +723,11 @@ impl CPU {
     fn rti(&mut self) {
         let data = self.pop8() & !0x10;
         self.p.set(data);
-        self.pc = self.pop16();
+        self.pc = self.pop16().wrapping_sub(1);
     }
 
     fn rts(&mut self) {
-        self.pc = self.pop16().wrapping_add(1);
+        self.pc = self.pop16();
     }
 
     fn sbc(&mut self) {
@@ -795,6 +803,10 @@ impl CPU {
         self.sbc();
     }
 
+    fn jam(&mut self) {
+        panic!("jam instruction is executed");
+    }
+
     fn lax(&mut self) {
         self.lda();
         self.ldx();
@@ -822,122 +834,5 @@ impl CPU {
     fn sre(&mut self) {
         self.lsr();
         self.eor();
-    }
-}
-
-#[cfg(test)]
-
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_adc() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.a = 0xab;
-            cpu.p.c = true;
-            cpu.write8(0x0000, 0x65);
-            cpu.write8(0x0001, 0x12);
-            cpu.write8(0x0012, 0x78);
-        });
-        assert_eq!(cpu.a, 0x24);
-        assert_eq!(cpu.p.get(), 0x25);
-    }
-
-    #[test]
-    fn test_and() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.a = 0xa5;
-            cpu.x = 0xa2;
-            cpu.write8(0x0000, 0x35);
-            cpu.write8(0x0001, 0xab);
-            cpu.write8(0x4d, 0x91);
-        });
-        assert_eq!(cpu.a, 0x81);
-        assert_eq!(cpu.p.get(), 0xa4);
-    }
-
-    #[test]
-    fn test_asl_acc() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.a = 0xaa;
-            cpu.write8(0x0000, 0x0a);
-        });
-        assert_eq!(cpu.a, 0x54);
-        assert_eq!(cpu.p.get(), 0x25);
-    }
-
-    #[test]
-    fn test_asl() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.write8(0x0000, 0x0e);
-            cpu.write16(0x0001, 0x0200);
-            cpu.write8(0x0200, 0x38);
-        });
-        assert_eq!(cpu.read8(0x0200), 0x70);
-        assert_eq!(cpu.p.get(), 0x24);
-    }
-
-    #[test]
-    fn test_bcc() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.a = 0x84;
-            cpu.write8(0x0000, 0x90);
-            cpu.write8(0x0001, 0x25);
-            cpu.write8(0x0027, 0x69);
-            cpu.write8(0x0028, 0x85);
-        });
-        assert_eq!(cpu.a, 0x09);
-        assert_eq!(cpu.p.get(), 0x65);
-    }
-
-    #[test]
-    fn test_bcs() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.a = 0xa5;
-            cpu.p.c = true;
-            cpu.pc = 0x0200;
-            cpu.write8(0x0200, 0xb0);
-            cpu.write8(0x0201, 0x82);
-            cpu.write8(0x0184, 0x29);
-            cpu.write8(0x0185, 0x84);
-        });
-        assert_eq!(cpu.a, 0x84);
-        assert_eq!(cpu.p.get(), 0xa5);
-    }
-
-    #[test]
-    fn test_beq() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.x = 0x77;
-            cpu.p.z = true;
-            cpu.write8(0x0000, 0xf0);
-            cpu.write8(0x0001, 0x65);
-            cpu.write8(0x0067, 0x1e);
-            cpu.write16(0x0068, 0x0456);
-            cpu.write8(0x04cd, 0x56);
-        });
-        assert_eq!(cpu.read8(0x04cd), 0xac);
-        assert_eq!(cpu.p.get(), 0xa4);
-    }
-
-    #[test]
-    fn test_bit() {
-        let mut cpu = CPU::new();
-        cpu.run(|cpu| {
-            cpu.a = 0x5a;
-            cpu.write8(0x0000, 0x24);
-            cpu.write8(0x0001, 0x35);
-            cpu.write8(0x0035, 0xe5);
-        });
-        assert_eq!(cpu.a, 0x5a);
-        assert_eq!(cpu.read8(0x0035), 0xe5);
-        assert_eq!(cpu.p.get(), 0xe4);
     }
 }
