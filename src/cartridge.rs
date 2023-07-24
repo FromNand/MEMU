@@ -1,5 +1,3 @@
-use core::panic;
-
 enum Mirroring {
     HORIZONTAL,
     VERTICAL,

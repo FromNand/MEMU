@@ -1,5 +1,4 @@
-use crate::bus::Bus;
-use crate::cartridge::Cartridge;
+use crate::Bus;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
@@ -329,13 +328,13 @@ pub struct CPU {
     s: u8,
     p: Flags,
     pc: u16,
-    pub bus: Bus,
+    bus: Bus,
     addr: u16,
     extra_cycle: usize,
 }
 
 impl CPU {
-    pub fn new(cart: Cartridge) -> Self {
+    pub fn new(bus: Bus) -> Self {
         let mut cpu = CPU {
             a: 0,
             x: 0,
@@ -343,7 +342,7 @@ impl CPU {
             s: 0xfd,
             p: Flags { c: false, z: false, i: true, d: false, r: true, v: false, n: false, },
             pc: 0,
-            bus: Bus::new(cart),
+            bus,
             addr: 0,
             extra_cycle: 0,
         };
@@ -433,7 +432,7 @@ impl CPU {
         }
     }
 
-    pub fn log(&self) -> String {
+    pub fn log(&self) {
         let inst = get_inst(self.read8(self.pc));
         let mut data: Vec<u8> = Vec::new();
         for b in 0..inst.length {
@@ -466,7 +465,7 @@ impl CPU {
             AddrMode::REL => format!("${:04X}", self.pc.wrapping_add(2).wrapping_add(self.addr)),
         }));
         let status = format!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", self.a, self.x, self.y, self.p.get(), self.s);
-        format!("{:6}{:9}{:33}{}", pc, binary.join(" "), disasm.join(" "), status)
+        println!("{}", format!("{:6}{:9}{:33}{}", pc, binary.join(" "), disasm.join(" "), status));
     }
 
     fn adc(&mut self) {
@@ -720,7 +719,7 @@ impl CPU {
     }
 
     fn rti(&mut self) {
-        let data = self.pop8() & !0x10;
+        let data = self.pop8();
         self.p.set(data);
         self.pc = self.pop16().wrapping_sub(1);
     }

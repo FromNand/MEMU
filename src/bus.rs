@@ -1,4 +1,4 @@
-use crate::cartridge::Cartridge;
+use crate::Cartridge;
 
 pub struct Bus {
     work_ram: [u8; 0x0800],

@@ -2,6 +2,7 @@ mod bus;
 mod cartridge;
 mod cpu;
 
+use bus::Bus;
 use cartridge::Cartridge;
 use cpu::CPU;
 use rand::Rng;
@@ -68,7 +69,7 @@ fn screen_changed(cpu: &CPU, frame: &mut [u8; 32 * 32 * 3]) -> bool {
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
-    let window = sdl_context.video().unwrap().window("Snake Game", 640, 640).position_centered().build().unwrap();
+    let window = sdl_context.video().unwrap().window("BNES", 640, 640).position_centered().build().unwrap();
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     canvas.set_scale(20.0, 20.0).unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -77,10 +78,10 @@ fn main() {
 
     let mut screen = [0 as u8; 32 * 32 * 3];
     let mut random = rand::thread_rng();
-    let mut cpu = CPU::new(Cartridge::new(&std::fs::read("cartridge/snake.nes").unwrap()));
+    let mut cpu = CPU::new(Bus::new(Cartridge::new(&std::fs::read("cartridge/snake.nes").unwrap())));
     cpu.run(move |cpu| {
         user_input(cpu, &mut event_pump);
-        cpu.bus.write8(0x00fe, random.gen_range(1..16));
+        cpu.write8(0x00fe, random.gen_range(1..16));
         if screen_changed(cpu, &mut screen) {
             texture.update(None, &screen, 32 * 3).unwrap();
             canvas.copy(&texture, None, None).unwrap();
