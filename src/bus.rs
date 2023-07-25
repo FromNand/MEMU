@@ -17,9 +17,10 @@ impl Bus {
         match addr {
             0x0000..=0x1fff => self.work_ram[(addr & 0x07ff) as usize],
             0x8000..=0xffff => {
-                addr -= 0x8000;
                 if self.cart.prog_rom.len() == 0x4000 {
                     addr &= 0x3fff;
+                } else {
+                    addr &= 0x7fff;
                 }
                 self.cart.prog_rom[addr as usize]
             }

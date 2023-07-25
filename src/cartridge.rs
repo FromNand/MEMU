@@ -13,11 +13,8 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn new(game: &Vec<u8>) -> Self {
-        if &game[0..4] != [0x4e, 0x45, 0x53, 0x1a] {
-            panic!("Not in iNES format");
-        }
-        if game[7] & 0x0c != 0 {
-            panic!("Only iNES format is supported");
+        if &game[0..4] != [0x4e, 0x45, 0x53, 0x1a] || game[7] & 0x0f != 0 {
+            panic!("Only iNES1.0 format is supported");
         }
         let mapper = (game[6] >> 4) + (game[7] & 0xf0);
         let prog_rom_size = 1024 * 16 * game[4] as usize;
