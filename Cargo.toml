@@ -1,5 +1,5 @@
 [package]
-name = "bnes"
+name = "memu"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,3 +9,4 @@ edition = "2021"
 sdl2 = "0.35.2"
 lazy_static = "1.4.0"
 rand = "0.8.5"
+bitflags = "2.3.3"

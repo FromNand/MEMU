@@ -1,14 +1,10 @@
-enum Mirroring {
-    HORIZONTAL,
-    VERTICAL,
-    FOUR_SCREEN,
-}
+use crate::ppu::Mirroring;
 
 pub struct Cartridge {
     mapper: usize,
     pub prog_rom: Vec<u8>,
-    char_rom: Vec<u8>,
-    mirroring: Mirroring,
+    pub char_rom: Vec<u8>,
+    pub mirroring: Mirroring,
 }
 
 impl Cartridge {
