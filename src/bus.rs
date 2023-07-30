@@ -49,6 +49,7 @@ impl<'a> Bus<'a> {
             0x2001 => self.ppu.write_to_ppumask(data),
             0x2003 => self.ppu.write_to_oam_addr(data),
             0x2004 => self.ppu.write_to_oam_data(data),
+            0x2005 => self.ppu.write_to_ppuscrl(data),
             0x2006 => self.ppu.write_to_ppuaddr(data),
             0x2007 => self.ppu.write(data),
             0x2008..=0x3fff => self.write8(addr & 0x2007, data),

@@ -13,8 +13,9 @@ pub struct PPU {
     ppumask: PPUMask,
     ppustts: PPUStts,
     oam_addr: u8,
+    ppuscrl: PPUScrl,
     ppuaddr: PPUAddr,
-    mirroring: Mirroring,
+    pub mirroring: Mirroring,
     pub char_rom: Vec<u8>,
     pub name_table: [u8; 0x0800],
     pub palette: [u8; 0x0020],
@@ -32,12 +33,23 @@ impl PPU {
             ppumask: PPUMask { gray_scale: false, show_left_back: false, show_left_sprite: false, show_back: false, show_sprite: false, emphasize_red: false, emphasize_green: false, emphasize_blue: false },
             ppustts: PPUStts { open_bus: 0x00, sprite_overflow: false, sprite0_hit: false, in_vblank: false },
             oam_addr: 0x00,
+            ppuscrl: PPUScrl { scroll_x: 0, scroll_y: 0, select_y: false },
             ppuaddr: PPUAddr { addr: 0x0000, access_low: false },
             mirroring,
             char_rom,
             name_table: [0; 0x0800],
             palette: [0; 0x0020],
             oam_data: [0; 0x0100],
+        }
+    }
+
+    pub fn nametable_addr(&self) -> u16 {
+        match self.ppuctrl.name_table_addr {
+            0 => 0x2000,
+            1 => 0x2400,
+            2 => 0x2800,
+            3 => 0x2c00,
+            _ => panic!("can't be here"),
         }
     }
 
@@ -68,6 +80,7 @@ impl PPU {
         if self.ppustts.in_vblank { data |= 0x80 };
         self.ppustts.in_vblank = false;
         self.ppuaddr.reset();
+        self.ppuscrl.reset();
         data
     }
 
@@ -82,6 +95,18 @@ impl PPU {
     pub fn write_to_oam_data(&mut self, data: u8) {
         self.oam_data[self.oam_addr as usize] = data;
         self.oam_addr = self.oam_addr.wrapping_add(1);
+    }
+
+    pub fn get_scroll_x(&self) -> u8 {
+        self.ppuscrl.scroll_x
+    }
+
+    pub fn get_scroll_y(&self) -> u8 {
+        self.ppuscrl.scroll_y
+    }
+
+    pub fn write_to_ppuscrl(&mut self, data: u8) {
+        self.ppuscrl.write(data);
     }
 
     pub fn write_to_ppuaddr(&mut self, data: u8) {
@@ -160,15 +185,23 @@ impl PPU {
         }
     }
 
+    fn is_sprite0_hit(&self, cycle: usize) -> bool {
+        let y = self.oam_data[0] as usize;
+        let x = self.oam_data[3] as usize;
+        (y == self.scanline as usize) && x <= cycle && self.ppumask.show_sprite
+    }
+
     pub fn tick(&mut self, cycle: usize) -> bool {
         self.cycle += cycle;
         if self.cycle >= 341 {
+            if self.is_sprite0_hit(self.cycle) {
+                self.ppustts.sprite0_hit = true;
+            }
             self.cycle -= 341;
             self.scanline += 1;
-            // check sprite0 hit
             if self.scanline == 241 {
-                // clear sprite0 hit
                 self.ppustts.in_vblank = true;
+                self.ppustts.sprite0_hit = false;
                 if self.ppuctrl.enable_nmi {
                     self.nmi = true;
                 }
@@ -176,6 +209,7 @@ impl PPU {
             if self.scanline >= 262 {
                 self.scanline = 0;
                 self.ppustts.in_vblank = false;
+                self.ppustts.sprite0_hit = false;
                 self.nmi = false;
                 return true;
             }
@@ -237,6 +271,27 @@ struct PPUStts {
     in_vblank: bool,
 }
 
+struct PPUScrl {
+    scroll_x: u8,
+    scroll_y: u8,
+    select_y: bool,
+}
+
+impl PPUScrl {
+    fn write(&mut self, data: u8) {
+        if self.select_y {
+            self.scroll_y = data;
+        } else {
+            self.scroll_x = data;
+        }
+        self.select_y = !self.select_y;
+    }
+
+    fn reset(&mut self) {
+        self.select_y = false;
+    }
+}
+
 struct PPUAddr {
     addr: u16,
     access_low: bool,
@@ -244,7 +299,6 @@ struct PPUAddr {
 
 impl PPUAddr {
     fn reset(&mut self) {
-        self.addr = 0x0000;
         self.access_low = false;
     }
 

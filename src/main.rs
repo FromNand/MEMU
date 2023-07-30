@@ -29,7 +29,20 @@ static SYSTEM_PALLETE: [(u8,u8,u8); 64] = [
     (0x99, 0xFF, 0xFC), (0xDD, 0xDD, 0xDD), (0x11, 0x11, 0x11), (0x11, 0x11, 0x11)
 ];
 
-pub struct Frame {
+struct Rect {
+    x1: usize,
+    y1: usize,
+    x2: usize,
+    y2: usize,
+}
+
+impl Rect {
+    fn new(x1: usize, y1: usize, x2: usize, y2: usize) -> Self {
+        Rect { x1, y1, x2, y2 }
+    }
+}
+
+struct Frame {
     pub data: Vec<u8>,
 }
 
@@ -38,9 +51,9 @@ impl Frame {
         Frame { data: vec![0; 3 * 256 * 240] }
     }
 
-    fn background_palette(&self, ppu: &PPU, tile_x: usize, tile_y: usize) -> [u8; 4] {
+    fn background_palette(&self, ppu: &PPU, name_table: &[u8], tile_x: usize, tile_y: usize) -> [u8; 4] {
         let index = tile_x / 4 + tile_y / 4 * 8;
-        let byte = ppu.name_table[0x03c0 + index];
+        let byte = name_table[index];
         let palette_index = match (tile_x % 4 / 2, tile_y % 4 / 2) {
             (0,0) => byte & 0b11,
             (1,0) => (byte >> 2) & 0b11,
@@ -61,21 +74,22 @@ impl Frame {
         }
     }
 
-    fn render(&mut self, ppu: &PPU) {
-        let addr = ppu.background_addr();
+    fn render_name_table(&mut self, ppu: &PPU, name_table: &[u8], view_port: Rect, shift_x: isize, shift_y: isize) {
+        let bank = ppu.background_addr();
+        let attribute_table = &name_table[0x03c0..0x0400];
         for i in 0x0000..0x03c0 {
-            let tile_index = ppu.name_table[i] as u16;
-            let tile_x = i % 32;
-            let tile_y = i / 32;
-            let tile = &ppu.char_rom[(addr + 16 * tile_index) as usize ..= (addr + 16 * tile_index + 15) as usize];
-            let palette = self.background_palette(ppu, tile_x, tile_y);
+            let tile_column = i % 32;
+            let tile_row = i / 32;
+            let tile_idx = name_table[i] as u16;
+            let tile = &ppu.char_rom[(bank + 16 * tile_idx) as usize ..= (bank + 16 * tile_idx + 15) as usize];
+            let palette = self.background_palette(ppu, attribute_table, tile_column, tile_row);
             for y in 0..=7 {
-                let mut low = tile[y];
-                let mut high = tile[y + 8];
-                for x in 0..=7 {
-                    let value = ((low & 0x80) >> 7) | ((high & 0x80) >> 6);
-                    low <<= 1;
-                    high <<= 1;
+                let mut upper = tile[y];
+                let mut lower = tile[y + 8];
+                for x in (0..=7).rev() {
+                    let value = (1 & lower) << 1 | (1 & upper);
+                    upper = upper >> 1;
+                    lower = lower >> 1;
                     let rgb = match value {
                         0 => SYSTEM_PALLETE[ppu.palette[0] as usize],
                         1 => SYSTEM_PALLETE[palette[1] as usize],
@@ -83,10 +97,36 @@ impl Frame {
                         3 => SYSTEM_PALLETE[palette[3] as usize],
                         _ => panic!("can't be here"),
                     };
-                    self.draw_pixel(8 * tile_x + x, 8 * tile_y + y, rgb);
+                    let pixel_x = tile_column * 8 + x;
+                    let pixel_y = tile_row * 8 + y;
+                    if pixel_x >= view_port.x1 && pixel_x < view_port.x2 && pixel_y >= view_port.y1 && pixel_y < view_port.y2 {
+                        self.draw_pixel((shift_x + pixel_x as isize) as usize, (shift_y + pixel_y as isize) as usize, rgb);
+                    }
                 }
             }
         }
+    }
+
+    fn render(&mut self, ppu: &PPU) {
+        let scroll_x = ppu.get_scroll_x() as usize;
+        let scroll_y = ppu.get_scroll_y() as usize;
+        let (main_nametable, second_nametable) = match (&ppu.mirroring, ppu.nametable_addr()) {
+            (ppu::Mirroring::HORIZONTAL, 0x2000) | (ppu::Mirroring::HORIZONTAL, 0x2400) => {
+                (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
+            }
+            (ppu::Mirroring::HORIZONTAL, 0x2800) | (ppu::Mirroring::HORIZONTAL, 0x2c00) => {
+                (&ppu.name_table[0x400..0x800], &ppu.name_table[0..0x400])
+            }
+            (ppu::Mirroring::VERTICAL, 0x2000) | (ppu::Mirroring::VERTICAL, 0x2800) => {
+                (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
+            }
+            (ppu::Mirroring::VERTICAL, 0x2400) | (ppu::Mirroring::VERTICAL, 0x2c00) => {
+                (&ppu.name_table[0x400..0x800], &ppu.name_table[0x0..0x400])
+            }
+            (_, _) => panic!("not supported mirroring type"),
+        };
+        self.render_name_table(ppu, main_nametable, Rect::new(scroll_x, scroll_y, 256, 240), -(scroll_x as isize), -(scroll_y as isize));
+        self.render_name_table(ppu, second_nametable, Rect::new(0, 0, scroll_x, 240), (256 - scroll_x) as isize, 0);
 
         for i in (0..ppu.oam_data.len()).step_by(4) {
             let tile_index = ppu.oam_data[i + 1] as u16;
@@ -123,6 +163,15 @@ impl Frame {
     }
 }
 
+const A: u8      = 0x01;
+const B: u8      = 0x02;
+const SELECT: u8 = 0x04;
+const START: u8  = 0x08;
+const UP: u8     = 0x10;
+const DOWN: u8   = 0x20;
+const LEFT: u8   = 0x40;
+const RIGHT: u8  = 0x80;
+
 fn main() {
     let sdl_context = sdl2::init().unwrap();
     let window = sdl_context.video().unwrap().window("MEMU", 256 * 3, 240 * 3).position_centered().build().unwrap();
@@ -133,16 +182,16 @@ fn main() {
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 256, 240).unwrap();
 
     let mut key_map = HashMap::new();
-    key_map.insert(Keycode::Down, joypad::JoypadButton::DOWN);
-    key_map.insert(Keycode::Up, joypad::JoypadButton::UP);
-    key_map.insert(Keycode::Right, joypad::JoypadButton::RIGHT);
-    key_map.insert(Keycode::Left, joypad::JoypadButton::LEFT);
-    key_map.insert(Keycode::Space, joypad::JoypadButton::SELECT);
-    key_map.insert(Keycode::Return, joypad::JoypadButton::START);
-    key_map.insert(Keycode::A, joypad::JoypadButton::BUTTON_A);
-    key_map.insert(Keycode::S, joypad::JoypadButton::BUTTON_B);
+    key_map.insert(Keycode::Down, DOWN);
+    key_map.insert(Keycode::Up, UP);
+    key_map.insert(Keycode::Right, RIGHT);
+    key_map.insert(Keycode::Left, LEFT);
+    key_map.insert(Keycode::Space, SELECT);
+    key_map.insert(Keycode::Return, START);
+    key_map.insert(Keycode::A, A);
+    key_map.insert(Keycode::S, B);
 
-    let cart = Cartridge::new(&std::fs::read("cartridge/alter.nes").unwrap());
+    let cart = Cartridge::new(&std::fs::read("cartridge/helloworld.nes").unwrap());
     let mut frame = Frame::new();
     let bus = Bus::new(cart, move |ppu, joypad| {
         println!("*** GameLoop ***");
@@ -155,12 +204,12 @@ fn main() {
                 Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => std::process::exit(0),
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        joypad.set_button_pressed_status(*key, true);
+                        joypad.status |= *key;
                     }
                 }
                 Event::KeyUp { keycode, .. } => {
                     if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        joypad.set_button_pressed_status(*key, false);
+                        joypad.status &= !*key;
                     }
                 }
                 _ => {},

@@ -838,52 +838,44 @@ fn tya(cpu: &mut CPU) {
 }
 
 fn dcp(cpu: &mut CPU) {
-    panic!("dcp() called");
     dec(cpu);
     cmp(cpu);
 }
 
 fn isb(cpu: &mut CPU) {
-    panic!("isb() called");
     inc(cpu);
     sbc(cpu);
 }
 
 fn jam(cpu: &mut CPU) {
-    panic!("jam() called");
+    panic!("jam() is called");
 }
 
 fn lax(cpu: &mut CPU) {
-    panic!("lax() called");
     lda(cpu);
     ldx(cpu);
 }
 
 fn rla(cpu: &mut CPU) {
-    panic!("rla() called");
     rol(cpu);
     and(cpu);
 }
 
 fn rra(cpu: &mut CPU) {
-    panic!("rra() called");
     ror(cpu);
     adc(cpu);
 }
 
 fn sax(cpu: &mut CPU) {
-    panic!("sax() called");
     cpu.write8(cpu.addr, cpu.a & cpu.x);
 }
 
 fn slo(cpu: &mut CPU) {
-    panic!("slo() called");
     asl(cpu);
     ora(cpu);
 }
 
 fn sre(cpu: &mut CPU) {
-    panic!("sre() called");
     lsr(cpu);
     eor(cpu);
 }
