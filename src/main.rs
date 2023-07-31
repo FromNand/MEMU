@@ -11,6 +11,8 @@ use cartridge::Cartridge;
 use cpu::CPU;
 use render::Frame;
 use std::collections::HashMap;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -43,10 +45,12 @@ fn main() {
     key_map.insert(Keycode::A, A);
     key_map.insert(Keycode::S, B);
 
-    let cart = Cartridge::new(&std::fs::read("cartridge/alter.nes").unwrap());
+    let target_fps = 60;
+    let frame_duration = Duration::from_secs(1) / target_fps;
+    let mut last_frame_time = Instant::now();
+    let cart = Cartridge::new(&std::fs::read("cartridge/runner.nes").unwrap());
     let mut frame = Frame::new();
     let bus = Bus::new(&sdl_context, cart, move |ppu, joypad| {
-        println!("*** GameLoop ***");
         frame.render(ppu);
         texture.update(None, &frame.data, 256 * 3).unwrap();
         canvas.copy(&texture, None, None).unwrap();
@@ -67,6 +71,11 @@ fn main() {
                 _ => {},
             }
         }
+        let elapsed_time = last_frame_time.elapsed();
+        if elapsed_time < frame_duration {
+            sleep(frame_duration - elapsed_time);
+        }
+        last_frame_time = Instant::now();
     });
     let mut cpu = CPU::new(bus);
     cpu.run(|cpu| {

@@ -56,7 +56,7 @@ impl<'a> Bus<'a> {
             0x2006 => self.ppu.write_to_ppuaddr(data),
             0x2007 => self.ppu.write(data),
             0x2008..=0x3fff => self.write8(addr & 0x2007, data),
-            0x4000..=0x4003 => self.apu.write(addr, data),
+            0x4000..=0x4003 | 0x4004..=0x4007 | 0x4008 | 0x400a | 0x400b | 0x400c | 0x400e | 0x400f => self.apu.write(addr, data),
             0x4014 => {
                 let mut buffer: [u8; 256] = [0; 256];
                 for i in 0..=255 {
