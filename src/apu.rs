@@ -264,7 +264,7 @@ impl Ch3Register {
     }
 
     fn hz(&self) -> f32 {
-        CPU_HZ / (16.0 * (self.hz + 1) as f32)
+        CPU_HZ / (32.0 * (self.hz + 1) as f32)
     }
 }
 

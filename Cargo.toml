@@ -6,12 +6,3 @@ edition = "2021"
 [dependencies]
 sdl2 = "0.35.2"
 lazy_static = "1.4.0"
-rand = "0.8.5"
-
-[[bin]]
-name = "main"
-path = "src/main.rs"
-
-[[bin]]
-name = "main2"
-path = "src/sound_test.rs"

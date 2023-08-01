@@ -5,17 +5,21 @@ mod ppu;
 mod apu;
 mod render;
 mod joypad;
+mod mapper;
 
 use bus::Bus;
 use cartridge::Cartridge;
 use cpu::CPU;
 use render::Frame;
+use mapper::Mapper2;
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+use std::sync::Mutex;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
+use lazy_static::lazy_static;
 
 const A: u8      = 0x01;
 const B: u8      = 0x02;
@@ -25,6 +29,10 @@ const UP: u8     = 0x10;
 const DOWN: u8   = 0x20;
 const LEFT: u8   = 0x40;
 const RIGHT: u8  = 0x80;
+
+lazy_static! {
+    pub static ref MAPPER: Mutex<Box<Mapper2>> = Mutex::new(Box::new(Mapper2::new()));
+}
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -48,7 +56,12 @@ fn main() {
     let target_fps = 60;
     let frame_duration = Duration::from_secs(1) / target_fps;
     let mut last_frame_time = Instant::now();
-    let cart = Cartridge::new(&std::fs::read("cartridge/runner.nes").unwrap());
+    let cart = Cartridge::new(&std::fs::read("cartridge/DQ2.nes").unwrap());
+    //let cart = Cartridge::new(&std::fs::read("cartridge/alter.nes").unwrap());
+    //let cart = Cartridge::new(&std::fs::read("cartridge/bomb.nes").unwrap());
+    //let cart = Cartridge::new(&std::fs::read("cartridge/runner.nes").unwrap());
+    //let cart = Cartridge::new(&std::fs::read("cartridge/color_test.nes").unwrap());
+    MAPPER.lock().unwrap().prog_rom = cart.prog_rom.clone();
     let mut frame = Frame::new();
     let bus = Bus::new(&sdl_context, cart, move |ppu, joypad| {
         frame.render(ppu);

@@ -2,10 +2,11 @@ use crate::Cartridge;
 use crate::ppu::PPU;
 use crate::apu::APU;
 use crate::joypad::Joypad;
+use crate::MAPPER;
 
 pub struct Bus<'call> {
     work_ram: [u8; 0x0800],
-    prog_rom: Vec<u8>,
+    //prog_rom: Vec<u8>,
     pub ppu: PPU,
     apu: APU,
     joypad1: Joypad,
@@ -16,8 +17,8 @@ impl<'a> Bus<'a> {
     pub fn new<'call, F: FnMut(&PPU, &mut Joypad) + 'call>(sdl_context: &sdl2::Sdl, cart: Cartridge, callback: F) -> Bus<'call> {
         Bus {
             work_ram: [0; 0x0800],
-            prog_rom: cart.prog_rom,
-            ppu: PPU::new(cart.mirroring, cart.char_rom),
+            //prog_rom: cart.prog_rom,
+            ppu: PPU::new(cart.mirroring, cart.is_char_ram, cart.char_rom),
             apu: APU::new(sdl_context),
             joypad1: Joypad::new(),
             callback: Box::from(callback),
@@ -32,14 +33,15 @@ impl<'a> Bus<'a> {
             0x2007 => self.ppu.read(),
             0x2008..=0x3fff => self.read8(addr & 0x2007),
             0x4016 => self.joypad1.read(),
-            0x4000 | 0x4010 | 0x4011 | 0x4014 | 0x4015 | 0x4017 => 0,
+            0x4017 => 0,
             0x8000..=0xffff => {
-                if self.prog_rom.len() == 0x4000 {
-                    addr &= 0x3fff;
-                } else {
-                    addr &= 0x7fff;
-                }
-                self.prog_rom[addr as usize]
+                MAPPER.lock().unwrap().read_prog_rom(addr)
+                // if self.prog_rom.len() == 0x4000 {
+                //     addr &= 0x3fff;
+                // } else {
+                //     addr &= 0x7fff;
+                // }
+                // self.prog_rom[addr as usize]
             }
             _ => todo!("Read from 0x{:04X} in CPU", addr),
         }
@@ -63,9 +65,16 @@ impl<'a> Bus<'a> {
                     buffer[i] = self.read8(((data as u16) << 8) + i as u16);
                 }
                 self.ppu.write_to_oam_dma(buffer);
+                for _ in 0..513 {
+                    // fixme
+                    self.ppu.tick(3);
+                }
             }
             0x4016 => self.joypad1.write(data),
-            0x4000..=0x4013 | 0x4015..=0x4017 => {},
+            0x8000..=0xffff => {
+                MAPPER.lock().unwrap().write(addr, data);
+            }
+            0x4010 | 0x4011 | 0x4015 | 0x4017 => {},
             _ => todo!("Write to 0x{:04X} in CPU", addr),
         }
     }

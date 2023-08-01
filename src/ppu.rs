@@ -7,7 +7,10 @@ pub enum Mirroring {
 pub struct PPU {
     pub cycle: usize,
     pub scanline: usize,
+    scanline_palette_indexes: Vec<usize>,
+    scanline_palette_tables: Vec<[u8; 0x20]>,
     pub nmi: bool,
+    pub clear_nmi: bool,
     internal_data: u8,
     ppuctrl: PPUCtrl,
     ppumask: PPUMask,
@@ -15,6 +18,7 @@ pub struct PPU {
     oam_addr: u8,
     ppuscrl: PPUScrl,
     ppuaddr: PPUAddr,
+    is_char_ram: bool,
     pub mirroring: Mirroring,
     pub char_rom: Vec<u8>,
     pub name_table: [u8; 0x0800],
@@ -23,24 +27,75 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(mirroring: Mirroring, char_rom: Vec<u8>) -> Self {
+    pub fn new(mirroring: Mirroring, is_char_ram: bool, char_rom: Vec<u8>) -> Self {
         PPU {
             cycle: 0,
             scanline: 0,
+            scanline_palette_indexes: vec![],
+            scanline_palette_tables: vec![],
             nmi: false,
+            clear_nmi: false,
             internal_data: 0,
             ppuctrl: PPUCtrl { name_table_addr: 0, increment: false, sprite_addr: false, background_addr: false, sprite_size: false, slave: false, enable_nmi: false },
             ppumask: PPUMask { gray_scale: false, show_left_back: false, show_left_sprite: false, show_back: false, show_sprite: false, emphasize_red: false, emphasize_green: false, emphasize_blue: false },
-            ppustts: PPUStts { open_bus: 0x00, sprite_overflow: false, sprite0_hit: false, in_vblank: false },
+            ppustts: PPUStts { open_bus: 0x10, sprite_overflow: false, sprite0_hit: false, in_vblank: false },
             oam_addr: 0x00,
             ppuscrl: PPUScrl { scroll_x: 0, scroll_y: 0, select_y: false },
             ppuaddr: PPUAddr { addr: 0x0000, access_low: false },
+            is_char_ram,
             mirroring,
             char_rom,
             name_table: [0; 0x0800],
             palette: [0; 0x0020],
             oam_data: [0; 0x0100],
         }
+    }
+
+    fn mirror_palette_addr(&self, addr: u16) -> u16 {
+        let mirror_addr = addr & 0x001f;
+        match mirror_addr {
+            0x0010 => 0x0000,
+            0x0014 => 0x0004,
+            0x0018 => 0x0008,
+            0x001c => 0x000c,
+            _ => mirror_addr,
+        }
+    }
+
+    fn write_palette_table(&mut self, addr: u16, value: u8) {
+        let addr = self.mirror_palette_addr(addr) as usize;
+        self.palette[addr] = value;
+        let scanline = self.scanline;
+        let last_scanline = self.scanline_palette_indexes.last().unwrap_or(&0);
+        if *last_scanline != scanline {
+            self.scanline_palette_indexes.push(scanline);
+            self.scanline_palette_tables
+                .push(self.palette.clone());
+        } else {
+            self.scanline_palette_tables.pop();
+            self.scanline_palette_tables
+                .push(self.palette.clone());
+        }
+    }
+
+    fn clear_palette_table_histories(&mut self) {
+        self.scanline_palette_indexes = vec![];
+        self.scanline_palette_tables = vec![];
+    }
+
+    pub fn read_palette_table(&self, scanline: usize) -> &[u8; 32] {
+        if self.scanline_palette_indexes.is_empty() {
+            return &self.palette;
+        }
+        let mut index = 0;
+        for (i, s) in self.scanline_palette_indexes.iter().enumerate() {
+            if *s > scanline {
+                break;
+            }
+            index = i
+        }
+        let table = &self.scanline_palette_tables[index];
+        table
     }
 
     pub fn nametable_addr(&self) -> u16 {
@@ -78,6 +133,7 @@ impl PPU {
         if self.ppustts.sprite_overflow { data |= 0x20 };
         if self.ppustts.sprite0_hit { data |= 0x40 };
         if self.ppustts.in_vblank { data |= 0x80 };
+        self.clear_nmi = true;
         self.ppustts.in_vblank = false;
         self.ppuaddr.reset();
         self.ppuscrl.reset();
@@ -142,15 +198,8 @@ impl PPU {
                 data
             }
             0x3f00..=0x3fff => {
-                let mirror_addr = addr & 0x001f;
-                let mirror_addr = match mirror_addr {
-                    0x0010 => 0x0000,
-                    0x0014 => 0x0004,
-                    0x0018 => 0x0008,
-                    0x001c => 0x000c,
-                    _ => mirror_addr,
-                };
-                self.palette[mirror_addr as usize]
+                self.internal_data = self.palette[self.mirror_palette_addr(addr) as usize];
+                self.internal_data
             }
             _ => panic!("Read from 0x{:04X} in PPU", addr),
         }
@@ -160,7 +209,11 @@ impl PPU {
         let addr = self.ppuaddr.addr & 0x3fff;
         self.increment_ppuaddr();
         match addr {
-            0x0000..=0x1fff => {},
+            0x0000..=0x1fff => {
+                if self.is_char_ram {
+                    self.char_rom[addr as usize] = data;
+                }
+            }
             0x2000..=0x3eff => {
                 let mirror_addr = addr & 0x0fff;
                 let mirror_addr = match (&self.mirroring, mirror_addr / 0x0400) {
@@ -171,15 +224,8 @@ impl PPU {
                 self.name_table[mirror_addr as usize] = data;
             }
             0x3f00..=0x3fff => {
-                let mirror_addr = addr & 0x001f;
-                let mirror_addr = match mirror_addr {
-                    0x0010 => 0x0000,
-                    0x0014 => 0x0004,
-                    0x0018 => 0x0008,
-                    0x001c => 0x000c,
-                    _ => mirror_addr,
-                };
-                self.palette[mirror_addr as usize] = data;
+                //self.palette[self.mirror_palette_addr(addr) as usize] = data;
+                self.write_palette_table(addr, data);
             }
             _ => panic!("Write to  0x{:04X} in PPU", addr),
         }
@@ -211,6 +257,7 @@ impl PPU {
                 self.ppustts.in_vblank = false;
                 self.ppustts.sprite0_hit = false;
                 self.nmi = false;
+                self.clear_palette_table_histories();
                 return true;
             }
         }

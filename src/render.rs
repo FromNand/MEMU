@@ -50,7 +50,8 @@ impl Frame {
             _ => panic!("can't be here"),
         };
         let start: usize = 1 + palette_index as usize * 4;
-        [ppu.palette[0], ppu.palette[start], ppu.palette[start + 1], ppu.palette[start + 2]]
+        let p = ppu.read_palette_table(tile_y * 8);
+        [p[0], p[start], p[start + 1], p[start + 2]]
     }
 
     fn draw_pixel(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
@@ -79,7 +80,7 @@ impl Frame {
                     upper = upper >> 1;
                     lower = lower >> 1;
                     let rgb = match value {
-                        0 => SYSTEM_PALLETE[ppu.palette[0] as usize],
+                        0 => SYSTEM_PALLETE[palette[0] as usize],
                         1 => SYSTEM_PALLETE[palette[1] as usize],
                         2 => SYSTEM_PALLETE[palette[2] as usize],
                         3 => SYSTEM_PALLETE[palette[3] as usize],
@@ -93,6 +94,12 @@ impl Frame {
                 }
             }
         }
+    }
+
+    fn sprite_palette(&self, ppu: &PPU, tile_y: usize, palette_idx: u8) -> [u8; 4] {
+        let start = 0x11 + (palette_idx * 4) as usize;
+        let p = ppu.read_palette_table(tile_y);
+        [0, p[start], p[start + 1], p[start + 2]]
     }
 
     pub fn render(&mut self, ppu: &PPU) {
@@ -113,16 +120,50 @@ impl Frame {
             }
             (_, _) => panic!("not supported mirroring type"),
         };
-        self.render_name_table(ppu, main_nametable, Rect::new(scroll_x, scroll_y, 256, 240), -(scroll_x as isize), -(scroll_y as isize));
-        self.render_name_table(ppu, second_nametable, Rect::new(0, 0, scroll_x, 240), (256 - scroll_x) as isize, 0);
+        let screen_w = 256;
+        let screen_h = 240;
+                // 左上
+    self.render_name_table(
+        ppu,
+        main_nametable,
+        Rect::new(scroll_x, scroll_y, screen_w, screen_h),
+        -(scroll_x as isize),
+        -(scroll_y as isize),
+    );
+
+    // 右下
+    self.render_name_table(
+        ppu,
+        second_nametable,
+        Rect::new(0, 0, scroll_x, scroll_y),
+        (screen_w - scroll_x) as isize,
+        (screen_h - scroll_y) as isize,
+    );
+
+    // 左下
+    self.render_name_table(
+        ppu,
+        main_nametable,
+        Rect::new(scroll_x, 0, screen_w, scroll_y),
+        -(scroll_x as isize),
+        (screen_h - scroll_y) as isize,
+    );
+
+    // 右上
+    self.render_name_table(
+        ppu,
+        second_nametable,
+        Rect::new(0, scroll_y, scroll_x, screen_h),
+        (screen_w - scroll_x) as isize,
+        -(scroll_y as isize),
+    );
 
         for i in (0..ppu.oam_data.len()).step_by(4) {
             let tile_index = ppu.oam_data[i + 1] as u16;
             let tile_x = ppu.oam_data[i + 3] as usize;
             let tile_y = ppu.oam_data[i] as usize;
             let tile_attr = ppu.oam_data[i + 2];
-            let palette_index = (0x11 + 4 * (tile_attr & 0x03)) as usize;
-            let sprite_palette: [usize; 4] = [0, ppu.palette[palette_index] as usize, ppu.palette[palette_index + 1] as usize, ppu.palette[palette_index + 2] as usize];
+            let sprite_palette = self.sprite_palette(ppu, tile_y, tile_attr & 0x03);
             let bank: u16 = ppu.sprite_addr();
             let tile = &ppu.char_rom[(bank + 16 * tile_index) as usize ..= (bank + 16 * tile_index + 15) as usize];
             for y in 0..=7 {

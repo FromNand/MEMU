@@ -458,6 +458,10 @@ impl<'a> CPU<'a> {
 
     pub fn run<F: FnMut(&mut CPU)>(&mut self, mut callback: F) {
         loop {
+            if self.bus.ppu.clear_nmi {
+                self.bus.ppu.nmi = false;
+                self.bus.ppu.clear_nmi = false;
+            }
             if self.bus.ppu.nmi {
                 self.bus.ppu.nmi = false;
                 self.nmi();

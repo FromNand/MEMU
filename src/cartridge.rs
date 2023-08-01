@@ -5,6 +5,7 @@ pub struct Cartridge {
     pub prog_rom: Vec<u8>,
     pub char_rom: Vec<u8>,
     pub mirroring: Mirroring,
+    pub is_char_ram: bool,
 }
 
 impl Cartridge {
@@ -25,8 +26,14 @@ impl Cartridge {
         Cartridge {
             mapper: mapper as usize,
             prog_rom: game[prog_rom_start..(prog_rom_start + prog_rom_size)].to_vec(),
-            char_rom: game[char_rom_start..(char_rom_start + char_rom_size)].to_vec(),
+            char_rom: if char_rom_size == 0 {
+                let blank_char_rom: Vec<u8> = vec![0; 1024 * 8];
+                blank_char_rom
+            } else {
+                game[char_rom_start..(char_rom_start + char_rom_size)].to_vec()
+            },
             mirroring,
+            is_char_ram: char_rom_size == 0,
         }
     }
 }
