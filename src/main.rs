@@ -57,10 +57,10 @@ fn main() {
     let frame_duration = Duration::from_secs(1) / target_fps;
     let mut last_frame_time = Instant::now();
     let cart = Cartridge::new(&std::fs::read("cartridge/DQ2.nes").unwrap());
-    //let cart = Cartridge::new(&std::fs::read("cartridge/alter.nes").unwrap());
-    //let cart = Cartridge::new(&std::fs::read("cartridge/bomb.nes").unwrap());
-    //let cart = Cartridge::new(&std::fs::read("cartridge/runner.nes").unwrap());
-    //let cart = Cartridge::new(&std::fs::read("cartridge/color_test.nes").unwrap());
+    // let cart = Cartridge::new(&std::fs::read("cartridge/alter.nes").unwrap());
+    // let cart = Cartridge::new(&std::fs::read("cartridge/bomb.nes").unwrap());
+    // let cart = Cartridge::new(&std::fs::read("cartridge/runner.nes").unwrap());
+    // let cart = Cartridge::new(&std::fs::read("cartridge/color_test.nes").unwrap());
     MAPPER.lock().unwrap().prog_rom = cart.prog_rom.clone();
     let mut frame = Frame::new();
     let bus = Bus::new(&sdl_context, cart, move |ppu, joypad| {

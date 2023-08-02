@@ -25,13 +25,14 @@ impl<'a> Bus<'a> {
         }
     }
 
-    pub fn read8(&mut self, mut addr: u16) -> u8 {
+    pub fn read8(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1fff => self.work_ram[(addr & 0x07ff) as usize],
             0x2002 => self.ppu.read_ppustts(),
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read(),
             0x2008..=0x3fff => self.read8(addr & 0x2007),
+            0x4015 => self.apu.read_status(),
             0x4016 => self.joypad1.read(),
             0x4017 => 0,
             0x8000..=0xffff => {
@@ -70,18 +71,25 @@ impl<'a> Bus<'a> {
                     self.ppu.tick(3);
                 }
             }
+            0x4015 => self.apu.write_status(data),
             0x4016 => self.joypad1.write(data),
+            0x4017 => self.apu.write_frame_counter(data),
             0x8000..=0xffff => {
                 MAPPER.lock().unwrap().write(addr, data);
             }
-            0x4010 | 0x4011 | 0x4015 | 0x4017 => {},
+            0x4010 | 0x4011 => {},
             _ => todo!("Write to 0x{:04X} in CPU", addr),
         }
+    }
+
+    pub fn poll_apu_irq(&self) -> bool {
+        self.apu.irq()
     }
 
     pub fn tick(&mut self, cycle: usize) {
         let old_nmi = self.ppu.nmi;
         self.ppu.tick(cycle * 3);
+        self.apu.tick(cycle);
         if !old_nmi && self.ppu.nmi {
             (self.callback)(&self.ppu, &mut self.joypad1);
         }

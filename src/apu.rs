@@ -8,16 +8,20 @@ const CPU_HZ: f32 = 1789772.5;
 pub struct APU {
     ch1_register: Ch1Register,
     ch1_device: AudioDevice<SquareWave>,
-    ch1_sender: Sender<SquareNote>,
+    ch1_sender: Sender<SquareEvent>,
     ch2_register: Ch2Register,
     ch2_device: AudioDevice<SquareWave>,
-    ch2_sender: Sender<SquareNote>,
+    ch2_sender: Sender<SquareEvent>,
     ch3_register: Ch3Register,
     ch3_device: AudioDevice<TriangleWave>,
     ch3_sender: Sender<TriangleNote>,
     ch4_register: Ch4Register,
     ch4_device: AudioDevice<NoiseWave>,
     ch4_sender: Sender<NoiseNote>,
+    frame_counter: FrameCounter,
+    cycles: usize,
+    counter: usize,
+    status: StatusRegister,
 }
 
 impl APU {
@@ -39,6 +43,10 @@ impl APU {
             ch4_register: Ch4Register::new(),
             ch4_device,
             ch4_sender,
+            frame_counter: FrameCounter::new(),
+            cycles: 0,
+            counter: 0,
+            status: StatusRegister::new(),
         }
     }
 
@@ -46,11 +54,11 @@ impl APU {
         match addr {
             0x4000..=0x4003 => {
                 self.ch1_register.write(addr, value);
-                self.ch1_sender.send(SquareNote { hz: self.ch1_register.hz(), volume: self.ch1_register.volume(), duty: self.ch1_register.duty() }).unwrap();
+                self.ch1_sender.send(SquareEvent::Note(SquareNote { hz: self.ch1_register.hz(), volume: self.ch1_register.volume(), duty: self.ch1_register.duty() })).unwrap();
             }
             0x4004..=0x4007 => {
                 self.ch2_register.write(addr, value);
-                self.ch2_sender.send(SquareNote { hz: self.ch2_register.hz(), volume: self.ch2_register.volume(), duty: self.ch2_register.duty() }).unwrap();
+                self.ch2_sender.send(SquareEvent::Note(SquareNote { hz: self.ch2_register.hz(), volume: self.ch2_register.volume(), duty: self.ch2_register.duty() })).unwrap();
             }
             0x4008 | 0x400a | 0x400b => {
                 self.ch3_register.write(addr, value);
@@ -61,6 +69,54 @@ impl APU {
                 self.ch4_sender.send(NoiseNote { hz: CPU_HZ / NOISE_TABLE[self.ch4_register.hz as usize] as f32, volume: self.ch4_register.volume as f32 / 15.0, is_long: self.ch4_register.noise_type == NoiseType::LONG }).unwrap();
             }
             _ => panic!("can't be here"),
+        }
+    }
+
+    pub fn read_status(&mut self) -> u8 {
+        let return_value = self.status.get();
+        self.status.enable_frame_irq = false;
+        return_value
+    }
+
+    pub fn write_status(&mut self, data: u8) {
+        self.status.update(data);
+        if self.status.enable_ch1 == false {
+            self.ch1_sender.send(SquareEvent::Stop()).unwrap();
+        }
+    }
+
+    pub fn irq(&self) -> bool {
+        self.status.enable_frame_irq
+    }
+
+    pub fn write_frame_counter(&mut self, data: u8) {
+        self.frame_counter.update(data);
+        self.cycles = 0;
+        self.counter = 0;
+    }
+
+    pub fn tick(&mut self, cycle: usize) {
+        self.cycles = self.cycles.wrapping_add(cycle);
+        let interval = 7457;
+        if self.cycles >= interval {
+            self.cycles -= interval;
+            self.counter += 1;
+            match self.frame_counter.mode() {
+                4 => {
+                    if self.counter == 2 || self.counter == 4 {
+                        // len
+                    }
+                    if self.counter == 4 {
+                        self.counter = 0;
+                        self.status.enable_frame_irq = true;
+                    }
+                    // envelope
+                }
+                5 => {
+                    
+                }
+                _ => panic!("can't be here"),
+            }
         }
     }
 }
@@ -113,6 +169,11 @@ impl Ch1Register {
     }
 }
 
+enum SquareEvent {
+    Note(SquareNote),
+    Stop(),
+}
+
 struct SquareNote {
     hz: f32,
     volume: f32,
@@ -123,7 +184,7 @@ struct SquareWave {
     phase: f32,
     freq: f32,
     note: SquareNote,
-    receiver: Receiver<SquareNote>,
+    receiver: Receiver<SquareEvent>,
 }
 
 impl AudioCallback for SquareWave {
@@ -131,7 +192,8 @@ impl AudioCallback for SquareWave {
     fn callback(&mut self, out: &mut [f32]) {
         for x in out.iter_mut() {
             match self.receiver.recv_timeout(Duration::from_millis(0)) {
-                Ok(note) => self.note = note,
+                Ok(SquareEvent::Note(note)) => self.note = note,
+                Ok(SquareEvent::Stop()) => self.note.volume = 0.0,
                 Err(_) => {},
             }
             *x = if self.phase <= self.note.duty {
@@ -144,9 +206,9 @@ impl AudioCallback for SquareWave {
     }
 }
 
-fn init_square(sdl_context: &sdl2::Sdl) -> (AudioDevice<SquareWave>, Sender<SquareNote>) {
+fn init_square(sdl_context: &sdl2::Sdl) -> (AudioDevice<SquareWave>, Sender<SquareEvent>) {
     let audio_subsystem = sdl_context.audio().unwrap();
-    let (sender, receiver) = channel::<SquareNote>();
+    let (sender, receiver) = channel::<SquareEvent>();
     let desired_spec = AudioSpecDesired {
         freq: Some(44100),
         channels: Some(1),
@@ -447,4 +509,80 @@ fn init_noise(sdl_context: &sdl2::Sdl) -> (AudioDevice<NoiseWave>, Sender<NoiseN
     }).unwrap();
     device.resume();
     (device, sender)
+}
+
+
+
+
+
+
+
+struct FrameCounter {
+    disable_irq: bool,
+    sequence_mode: bool,
+}
+
+impl FrameCounter {
+    fn new() -> Self {
+        FrameCounter {
+            disable_irq: true,
+            sequence_mode: true,
+        }
+    }
+
+    fn update(&mut self, data: u8) {
+        self.disable_irq = data & 0x40 != 0;
+        self.sequence_mode = data & 0x80 != 0;
+    }
+
+    fn irq(&self) -> bool {
+        !self.disable_irq
+    }
+
+    fn mode(&self) -> u8 {
+        if self.sequence_mode { 5 } else { 4 }
+    }
+}
+
+
+
+
+
+
+
+
+struct StatusRegister {
+    enable_ch1: bool,
+    enable_ch2: bool,
+    enable_ch3: bool,
+    enable_ch4: bool,
+    enable_ch5: bool,
+    enable_frame_irq: bool,
+    enable_dmc_irq: bool,
+}
+
+impl StatusRegister {
+    fn new() -> Self {
+        StatusRegister { enable_ch1: false, enable_ch2: false, enable_ch3: false, enable_ch4: false, enable_ch5: false, enable_frame_irq: false, enable_dmc_irq: false }
+    }
+
+    fn get(&self) -> u8 {
+        let mut data = 0;
+        if self.enable_ch1 { data |= 0x01 }
+        if self.enable_ch2 { data |= 0x02 }
+        if self.enable_ch3 { data |= 0x04 }
+        if self.enable_ch4 { data |= 0x08 }
+        if self.enable_ch5 { data |= 0x10 }
+        if self.enable_frame_irq { data |= 0x40 }
+        if self.enable_dmc_irq { data |= 0x80 }
+        data
+    }
+
+    fn update(&mut self, data: u8) {
+        self.enable_ch1 = data & 0x01 != 0;
+        self.enable_ch2 = data & 0x02 != 0;
+        self.enable_ch3 = data & 0x04 != 0;
+        self.enable_ch4 = data & 0x08 != 0;
+        self.enable_ch5 = data & 0x10 != 0;
+    }
 }

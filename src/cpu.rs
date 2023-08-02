@@ -456,6 +456,16 @@ impl<'a> CPU<'a> {
         self.pc = self.read16(0xfffa);
     }
 
+    fn apu_irq(&mut self) {
+        if self.p.i {
+            return;
+        }
+        self.push16(self.pc);
+        self.push8(self.p.get());
+        self.p.i = true;
+        self.pc = self.read16(0xfffe);
+    }
+
     pub fn run<F: FnMut(&mut CPU)>(&mut self, mut callback: F) {
         loop {
             if self.bus.ppu.clear_nmi {
@@ -465,6 +475,9 @@ impl<'a> CPU<'a> {
             if self.bus.ppu.nmi {
                 self.bus.ppu.nmi = false;
                 self.nmi();
+            }
+            if self.bus.poll_apu_irq() {
+                self.apu_irq();
             }
             let inst = get_inst(self.read8(self.pc));
             self.cycle_mode = inst.cycle_mode.clone();
