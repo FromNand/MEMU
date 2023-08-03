@@ -60,7 +60,7 @@ fn main() {
     // let cart = Cartridge::new(&std::fs::read("cartridge/alter.nes").unwrap());
     // let cart = Cartridge::new(&std::fs::read("cartridge/bomb.nes").unwrap());
     // let cart = Cartridge::new(&std::fs::read("cartridge/runner.nes").unwrap());
-    // let cart = Cartridge::new(&std::fs::read("cartridge/color_test.nes").unwrap());
+    // let cart = Cartridge::new(&std::fs::read("cartridge/mario.nes").unwrap());
     MAPPER.lock().unwrap().prog_rom = cart.prog_rom.clone();
     let mut frame = Frame::new();
     let bus = Bus::new(&sdl_context, cart, move |ppu, joypad| {
