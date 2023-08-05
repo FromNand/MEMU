@@ -480,6 +480,9 @@ impl<'a> CPU<'a> {
                 self.apu_irq();
             }
             let inst = get_inst(self.read8(self.pc));
+            let b1 = self.read8(self.pc + 1);
+            let b2 = self.read8(self.pc + 2);
+            let b3 = self.read16(0xfffe);
             self.cycle_mode = inst.cycle_mode.clone();
             self.extra_cycle = 0;
             self.addr = self.get_addr(&inst.addr_mode);
@@ -598,9 +601,9 @@ fn bpl(cpu: &mut CPU) {
 }
 
 fn brk(cpu: &mut CPU) {
-    if cpu.p.i {
-        return;
-    }
+    // if cpu.p.i {
+    //     return;
+    // }
     cpu.push16(cpu.pc.wrapping_add(2));
     cpu.push8(cpu.p.get() | 0x10);
     cpu.p.i = true;

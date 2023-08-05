@@ -1,12 +1,11 @@
-use crate::Cartridge;
 use crate::ppu::PPU;
 use crate::apu::APU;
 use crate::joypad::Joypad;
 use crate::MAPPER;
+use crate::mapper::Mapper;
 
 pub struct Bus<'call> {
     work_ram: [u8; 0x0800],
-    //prog_rom: Vec<u8>,
     pub ppu: PPU,
     apu: APU,
     joypad1: Joypad,
@@ -14,11 +13,10 @@ pub struct Bus<'call> {
 }
 
 impl<'a> Bus<'a> {
-    pub fn new<'call, F: FnMut(&PPU, &mut Joypad) + 'call>(sdl_context: &sdl2::Sdl, cart: Cartridge, callback: F) -> Bus<'call> {
+    pub fn new<'call, F: FnMut(&PPU, &mut Joypad) + 'call>(sdl_context: &sdl2::Sdl, callback: F) -> Bus<'call> {
         Bus {
             work_ram: [0; 0x0800],
-            //prog_rom: cart.prog_rom,
-            ppu: PPU::new(cart.mirroring, cart.is_char_ram, cart.char_rom),
+            ppu: PPU::new(),
             apu: APU::new(sdl_context),
             joypad1: Joypad::new(),
             callback: Box::from(callback),
@@ -28,6 +26,8 @@ impl<'a> Bus<'a> {
     pub fn read8(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1fff => self.work_ram[(addr & 0x07ff) as usize],
+            0x2000 => self.ppu.read_ppuctrl(),
+            0x2001 => self.ppu.read_ppumask(),
             0x2002 => self.ppu.read_ppustts(),
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read(),
@@ -35,15 +35,8 @@ impl<'a> Bus<'a> {
             0x4015 => self.apu.read_status(),
             0x4016 => self.joypad1.read(),
             0x4017 => 0,
-            0x8000..=0xffff => {
-                MAPPER.lock().unwrap().read_prog_rom(addr)
-                // if self.prog_rom.len() == 0x4000 {
-                //     addr &= 0x3fff;
-                // } else {
-                //     addr &= 0x7fff;
-                // }
-                // self.prog_rom[addr as usize]
-            }
+            0x6000..=0x7fff => MAPPER.lock().unwrap().read_save_ram(addr),
+            0x8000..=0xffff => MAPPER.lock().unwrap().read_prog_rom(addr),
             _ => todo!("Read from 0x{:04X} in CPU", addr),
         }
     }
@@ -74,6 +67,7 @@ impl<'a> Bus<'a> {
             0x4015 => self.apu.write_status(data),
             0x4016 => self.joypad1.write(data),
             0x4017 => self.apu.write_frame_counter(data),
+            0x6000..=0x7fff => MAPPER.lock().unwrap().write_save_ram(addr, data),
             0x8000..=0xffff => {
                 MAPPER.lock().unwrap().write(addr, data);
             }

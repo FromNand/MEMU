@@ -1,5 +1,6 @@
-use crate::ppu;
+use crate::{ppu, MAPPER};
 use ppu::PPU;
+use crate::mapper::Mapper;
 
 static SYSTEM_PALLETE: [(u8,u8,u8); 64] = [
     (0x80, 0x80, 0x80), (0x00, 0x3D, 0xA6), (0x00, 0x12, 0xB0), (0x44, 0x00, 0x96), (0xA1, 0x00, 0x5E),
@@ -51,7 +52,7 @@ impl Frame {
         };
         let start: usize = 1 + palette_index as usize * 4;
         let p = ppu.read_palette_table(tile_y * 8);
-        [p[0], p[start], p[start + 1], p[start + 2]]
+        [p[0] & 0x3f, p[start] & 0x3f, p[start + 1] & 0x3f, p[start + 2] & 0x3f]
     }
 
     fn draw_pixel(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
@@ -70,7 +71,11 @@ impl Frame {
             let tile_column = i % 32;
             let tile_row = i / 32;
             let tile_idx = name_table[i] as u16;
-            let tile = &ppu.char_rom[(bank + 16 * tile_idx) as usize ..= (bank + 16 * tile_idx + 15) as usize];
+            let start = bank + 16 * tile_idx;
+            let mut tile: [u8; 16] = [0; 16];
+            for i in 0..=15 {
+                tile[i] = MAPPER.lock().unwrap().read_char_rom(start + i as u16);
+            }
             let palette = self.background_palette(ppu, attribute_table, tile_column, tile_row);
             for y in 0..=7 {
                 let mut upper = tile[y];
@@ -99,13 +104,13 @@ impl Frame {
     fn sprite_palette(&self, ppu: &PPU, tile_y: usize, palette_idx: u8) -> [u8; 4] {
         let start = 0x11 + (palette_idx * 4) as usize;
         let p = ppu.read_palette_table(tile_y);
-        [0, p[start], p[start + 1], p[start + 2]]
+        [0, p[start] & 0x3f, p[start + 1] & 0x3f, p[start + 2] & 0x3f]
     }
 
     pub fn render(&mut self, ppu: &PPU) {
         let scroll_x = ppu.get_scroll_x() as usize;
         let scroll_y = ppu.get_scroll_y() as usize;
-        let (main_nametable, second_nametable) = match (&ppu.mirroring, ppu.nametable_addr()) {
+        let (main_nametable, second_nametable) = match (&MAPPER.lock().unwrap().mirroring(), ppu.nametable_addr()) {
             (ppu::Mirroring::HORIZONTAL, 0x2000) | (ppu::Mirroring::HORIZONTAL, 0x2400) => {
                 (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
             }
@@ -165,7 +170,11 @@ impl Frame {
             let tile_attr = ppu.oam_data[i + 2];
             let sprite_palette = self.sprite_palette(ppu, tile_y, tile_attr & 0x03);
             let bank: u16 = ppu.sprite_addr();
-            let tile = &ppu.char_rom[(bank + 16 * tile_index) as usize ..= (bank + 16 * tile_index + 15) as usize];
+            let start = bank + 16 * tile_index;
+            let mut tile: [u8; 16] = [0; 16];
+            for i in 0..=15 {
+                tile[i] = MAPPER.lock().unwrap().read_char_rom(start + i as u16);
+            }
             for y in 0..=7 {
                 let mut low = tile[y];
                 let mut high = tile[y + 8];

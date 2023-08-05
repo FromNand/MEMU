@@ -1,7 +1,7 @@
 use crate::ppu::Mirroring;
 
 pub struct Cartridge {
-    mapper: usize,
+    pub mapper: usize,
     pub prog_rom: Vec<u8>,
     pub char_rom: Vec<u8>,
     pub mirroring: Mirroring,
@@ -35,5 +35,9 @@ impl Cartridge {
             mirroring,
             is_char_ram: char_rom_size == 0,
         }
+    }
+
+    pub fn empty() -> Self {
+        Cartridge { mapper: 0, prog_rom: vec![], char_rom: vec![], mirroring: Mirroring::VERTICAL, is_char_ram: false }
     }
 }

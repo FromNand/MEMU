@@ -151,7 +151,9 @@ impl APU {
                     }
                     if self.counter == 4 {
                         self.counter = 0;
-                        self.status.enable_frame_irq = true;
+                        if self.frame_counter.irq() {
+                            self.status.enable_frame_irq = true;
+                        }
                     }
                     self.send_envelope_tick();
                 }
@@ -311,13 +313,16 @@ impl Sweep {
         Sweep { org_freq: frequency, frequency, change_amount, direction, timer_count, counter, enabled }
     }
 
-    fn tick(&mut self) {
+    fn tick(&mut self, length_counter: &LengthCounter) {
         if self.enabled == false {
             return;
         }
         if self.change_amount == 0 {
             return;
         }
+        // if length_counter.mute() {
+        //     return;
+        // }
         self.counter += 1;
         if self.counter <= self.timer_count + 1 {
             return;
@@ -402,7 +407,7 @@ impl AudioCallback for SquareWave {
                     Ok(SquareEvent::LengthCounter(l)) => self.length_counter = l,
                     Ok(SquareEvent::LengthCounterTick()) => self.length_counter.tick(),
                     Ok(SquareEvent::Sweep(s)) => self.sweep = s,
-                    Ok(SquareEvent::SweepTick()) => self.sweep.tick(),
+                    Ok(SquareEvent::SweepTick()) => self.sweep.tick(&self.length_counter),
                     Ok(SquareEvent::Reset()) => {
                         self.envelope.reset();
                         self.length_counter.reset();

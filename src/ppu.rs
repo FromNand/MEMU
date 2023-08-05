@@ -1,3 +1,7 @@
+use crate::MAPPER;
+use crate::mapper::Mapper;
+
+#[derive(Clone, Copy)]
 pub enum Mirroring {
     HORIZONTAL,
     VERTICAL,
@@ -18,16 +22,13 @@ pub struct PPU {
     oam_addr: u8,
     ppuscrl: PPUScrl,
     ppuaddr: PPUAddr,
-    is_char_ram: bool,
-    pub mirroring: Mirroring,
-    pub char_rom: Vec<u8>,
     pub name_table: [u8; 0x0800],
     pub palette: [u8; 0x0020],
     pub oam_data: [u8; 0x0100],
 }
 
 impl PPU {
-    pub fn new(mirroring: Mirroring, is_char_ram: bool, char_rom: Vec<u8>) -> Self {
+    pub fn new() -> Self {
         PPU {
             cycle: 0,
             scanline: 0,
@@ -42,9 +43,6 @@ impl PPU {
             oam_addr: 0x00,
             ppuscrl: PPUScrl { scroll_x: 0, scroll_y: 0, select_y: false },
             ppuaddr: PPUAddr { addr: 0x0000, access_low: false },
-            is_char_ram,
-            mirroring,
-            char_rom,
             name_table: [0; 0x0800],
             palette: [0; 0x0020],
             oam_data: [0; 0x0100],
@@ -116,12 +114,20 @@ impl PPU {
         if self.ppuctrl.sprite_addr { 0x1000 } else { 0x0000 }
     }
 
+    pub fn read_ppuctrl(&self) -> u8 {
+        self.ppuctrl.get()
+    }
+
     pub fn write_to_ppuctrl(&mut self, data: u8) {
         let old_enable_nmi = self.ppuctrl.enable_nmi;
         self.ppuctrl.set(data);
         if !old_enable_nmi && self.ppuctrl.enable_nmi && self.ppustts.in_vblank {
             self.nmi = true;
         }
+    }
+
+    pub fn read_ppumask(&self) -> u8 {
+        self.ppumask.get()
     }
 
     pub fn write_to_ppumask(&mut self, data: u8) {
@@ -183,13 +189,13 @@ impl PPU {
         match addr {
             0x0000..=0x1fff => {
                 let data = self.internal_data;
-                self.internal_data = self.char_rom[addr as usize];
+                self.internal_data = MAPPER.lock().unwrap().read_char_rom(addr);
                 data
             }
             0x2000..=0x3eff => {
                 let data = self.internal_data;
                 let mirror_addr = addr & 0x0fff;
-                let mirror_addr = match (&self.mirroring, mirror_addr / 0x0400) {
+                let mirror_addr = match (&MAPPER.lock().unwrap().mirroring(), mirror_addr / 0x0400) {
                     (Mirroring::HORIZONTAL, 1) | (Mirroring::HORIZONTAL, 2) => mirror_addr - 0x0400,
                     (Mirroring::HORIZONTAL, 3) | (Mirroring::VERTICAL, 2) | (Mirroring::VERTICAL, 3) => mirror_addr - 0x0800,
                     _ => mirror_addr,
@@ -210,13 +216,13 @@ impl PPU {
         self.increment_ppuaddr();
         match addr {
             0x0000..=0x1fff => {
-                if self.is_char_ram {
-                    self.char_rom[addr as usize] = data;
+                if MAPPER.lock().unwrap().cart.is_char_ram {
+                    MAPPER.lock().unwrap().write_char_rom(addr, data);
                 }
             }
             0x2000..=0x3eff => {
                 let mirror_addr = addr & 0x0fff;
-                let mirror_addr = match (&self.mirroring, mirror_addr / 0x0400) {
+                let mirror_addr = match (&MAPPER.lock().unwrap().mirroring(), mirror_addr / 0x0400) {
                     (Mirroring::HORIZONTAL, 1) | (Mirroring::HORIZONTAL, 2) => mirror_addr - 0x0400,
                     (Mirroring::HORIZONTAL, 3) | (Mirroring::VERTICAL, 2) | (Mirroring::VERTICAL, 3) => mirror_addr - 0x0800,
                     _ => mirror_addr,
@@ -285,6 +291,17 @@ impl PPUCtrl {
         self.slave = data & 0x40 != 0;
         self.enable_nmi = data & 0x80 != 0;
     }
+
+    fn get(&self) -> u8 {
+        let mut value = self.name_table_addr;
+        if self.increment { value |= 0x04 };
+        if self.sprite_addr { value |= 0x08 };
+        if self.background_addr { value |= 0x10 };
+        if self.sprite_size { value |= 0x20 };
+        if self.slave { value |= 0x40 };
+        if self.enable_nmi { value |= 0x80 };
+        value
+    }
 }
 
 struct PPUMask {
@@ -308,6 +325,19 @@ impl PPUMask {
         if data & 0x20 != 0 { self.emphasize_red = true }
         if data & 0x40 != 0 { self.emphasize_green = true }
         if data & 0x80 != 0 { self.emphasize_blue = true }
+    }
+
+    fn get(&self) -> u8 {
+        let mut value = 0;
+        if self.gray_scale { value |= 0x01 };
+        if self.show_left_back { value |= 0x02 };
+        if self.show_left_sprite { value |= 0x04 };
+        if self.show_back { value |= 0x08 };
+        if self.show_sprite { value |= 0x10 };
+        if self.emphasize_red { value |= 0x20 };
+        if self.emphasize_green { value |= 0x40 };
+        if self.emphasize_blue { value |= 0x80 };
+        value
     }
 }
 
