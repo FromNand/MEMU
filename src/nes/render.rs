@@ -1,6 +1,6 @@
-use crate::{ppu, MAPPER};
+use crate::{nes::ppu, nes::main::MAPPER};
 use ppu::PPU;
-use crate::mapper::Mapper;
+use crate::nes::mapper::Mapper;
 
 static SYSTEM_PALLETE: [(u8,u8,u8); 64] = [
     (0x80, 0x80, 0x80), (0x00, 0x3D, 0xA6), (0x00, 0x12, 0xB0), (0x44, 0x00, 0x96), (0xA1, 0x00, 0x5E),
@@ -108,95 +108,99 @@ impl Frame {
     }
 
     pub fn render(&mut self, ppu: &PPU) {
-        let scroll_x = ppu.get_scroll_x() as usize;
-        let scroll_y = ppu.get_scroll_y() as usize;
-        let (main_nametable, second_nametable) = match (&MAPPER.lock().unwrap().mirroring(), ppu.nametable_addr()) {
-            (ppu::Mirroring::HORIZONTAL, 0x2000) | (ppu::Mirroring::HORIZONTAL, 0x2400) => {
-                (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
-            }
-            (ppu::Mirroring::HORIZONTAL, 0x2800) | (ppu::Mirroring::HORIZONTAL, 0x2c00) => {
-                (&ppu.name_table[0x400..0x800], &ppu.name_table[0..0x400])
-            }
-            (ppu::Mirroring::VERTICAL, 0x2000) | (ppu::Mirroring::VERTICAL, 0x2800) => {
-                (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
-            }
-            (ppu::Mirroring::VERTICAL, 0x2400) | (ppu::Mirroring::VERTICAL, 0x2c00) => {
-                (&ppu.name_table[0x400..0x800], &ppu.name_table[0x0..0x400])
-            }
-            (_, _) => panic!("not supported mirroring type"),
-        };
-        let screen_w = 256;
-        let screen_h = 240;
-                // 左上
-    self.render_name_table(
-        ppu,
-        main_nametable,
-        Rect::new(scroll_x, scroll_y, screen_w, screen_h),
-        -(scroll_x as isize),
-        -(scroll_y as isize),
-    );
+        //if ppu.show_back() {
+            let scroll_x = ppu.get_scroll_x() as usize;
+            let scroll_y = ppu.get_scroll_y() as usize;
+            let (main_nametable, second_nametable) = match (&MAPPER.lock().unwrap().mirroring(), ppu.nametable_addr()) {
+                (ppu::Mirroring::HORIZONTAL, 0x2000) | (ppu::Mirroring::HORIZONTAL, 0x2400) => {
+                    (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
+                }
+                (ppu::Mirroring::HORIZONTAL, 0x2800) | (ppu::Mirroring::HORIZONTAL, 0x2c00) => {
+                    (&ppu.name_table[0x400..0x800], &ppu.name_table[0..0x400])
+                }
+                (ppu::Mirroring::VERTICAL, 0x2000) | (ppu::Mirroring::VERTICAL, 0x2800) => {
+                    (&ppu.name_table[0..0x400], &ppu.name_table[0x400..0x800])
+                }
+                (ppu::Mirroring::VERTICAL, 0x2400) | (ppu::Mirroring::VERTICAL, 0x2c00) => {
+                    (&ppu.name_table[0x400..0x800], &ppu.name_table[0x0..0x400])
+                }
+                (_, _) => panic!("not supported mirroring type"),
+            };
+            let screen_w = 256;
+            let screen_h = 240;
+                    // 左上
+            self.render_name_table(
+                ppu,
+                main_nametable,
+                Rect::new(scroll_x, scroll_y, screen_w, screen_h),
+                -(scroll_x as isize),
+                -(scroll_y as isize),
+            );
 
-    // 右下
-    self.render_name_table(
-        ppu,
-        second_nametable,
-        Rect::new(0, 0, scroll_x, scroll_y),
-        (screen_w - scroll_x) as isize,
-        (screen_h - scroll_y) as isize,
-    );
+            // 右下
+            self.render_name_table(
+                ppu,
+                second_nametable,
+                Rect::new(0, 0, scroll_x, scroll_y),
+                (screen_w - scroll_x) as isize,
+                (screen_h - scroll_y) as isize,
+            );
 
-    // 左下
-    self.render_name_table(
-        ppu,
-        main_nametable,
-        Rect::new(scroll_x, 0, screen_w, scroll_y),
-        -(scroll_x as isize),
-        (screen_h - scroll_y) as isize,
-    );
+            // 左下
+            self.render_name_table(
+                ppu,
+                main_nametable,
+                Rect::new(scroll_x, 0, screen_w, scroll_y),
+                -(scroll_x as isize),
+                (screen_h - scroll_y) as isize,
+            );
 
-    // 右上
-    self.render_name_table(
-        ppu,
-        second_nametable,
-        Rect::new(0, scroll_y, scroll_x, screen_h),
-        (screen_w - scroll_x) as isize,
-        -(scroll_y as isize),
-    );
+            // 右上
+            self.render_name_table(
+                ppu,
+                second_nametable,
+                Rect::new(0, scroll_y, scroll_x, screen_h),
+                (screen_w - scroll_x) as isize,
+                -(scroll_y as isize),
+            );
+        //}
 
-        for i in (0..ppu.oam_data.len()).step_by(4) {
-            let tile_index = ppu.oam_data[i + 1] as u16;
-            let tile_x = ppu.oam_data[i + 3] as usize;
-            let tile_y = ppu.oam_data[i] as usize;
-            let tile_attr = ppu.oam_data[i + 2];
-            let sprite_palette = self.sprite_palette(ppu, tile_y, tile_attr & 0x03);
-            let bank: u16 = ppu.sprite_addr();
-            let start = bank + 16 * tile_index;
-            let mut tile: [u8; 16] = [0; 16];
-            for i in 0..=15 {
-                tile[i] = MAPPER.lock().unwrap().read_char_rom(start + i as u16);
-            }
-            for y in 0..=7 {
-                let mut low = tile[y];
-                let mut high = tile[y + 8];
-                for x in 0..=7 {
-                    let value = ((low & 0x80) >> 7) | ((high & 0x80) >> 6);
-                    low <<= 1;
-                    high <<= 1;
-                    let rgb = match value {
-                        0 => continue,
-                        1 => SYSTEM_PALLETE[sprite_palette[1] as usize],
-                        2 => SYSTEM_PALLETE[sprite_palette[2] as usize],
-                        3 => SYSTEM_PALLETE[sprite_palette[3] as usize],
-                        _ => panic!("can't be here"),
-                    };
-                    match (tile_attr & 0x40 != 0, tile_attr & 0x80 != 0) {
-                        (false, false) => self.draw_pixel(tile_x + x, tile_y + y, rgb),
-                        (true, false) => self.draw_pixel(tile_x + 7 - x, tile_y + y, rgb),
-                        (false, true) => self.draw_pixel(tile_x + x, tile_y + 7 - y, rgb),
-                        (true, true) => self.draw_pixel(tile_x + 7 - x, tile_y + 7 - y, rgb),
+        //if ppu.show_sprite() {
+            for i in (0..ppu.oam_data.len()).step_by(4) {
+                let tile_index = ppu.oam_data[i + 1] as u16;
+                let tile_x = ppu.oam_data[i + 3] as usize;
+                let tile_y = ppu.oam_data[i] as usize;
+                let tile_attr = ppu.oam_data[i + 2];
+                let sprite_palette = self.sprite_palette(ppu, tile_y, tile_attr & 0x03);
+                let bank: u16 = ppu.sprite_addr();
+                let start = bank + 16 * tile_index;
+                let mut tile: [u8; 16] = [0; 16];
+                for i in 0..=15 {
+                    tile[i] = MAPPER.lock().unwrap().read_char_rom(start + i as u16);
+                }
+                for y in 0..=7 {
+                    let mut low = tile[y];
+                    let mut high = tile[y + 8];
+                    for x in 0..=7 {
+                        let value = ((low & 0x80) >> 7) | ((high & 0x80) >> 6);
+                        low <<= 1;
+                        high <<= 1;
+                        let rgb = match value {
+                            0 => continue,
+                            1 => SYSTEM_PALLETE[sprite_palette[1] as usize],
+                            2 => SYSTEM_PALLETE[sprite_palette[2] as usize],
+                            3 => SYSTEM_PALLETE[sprite_palette[3] as usize],
+                            _ => panic!("can't be here"),
+                        };
+                        match (tile_attr & 0x40 != 0, tile_attr & 0x80 != 0) {
+                            (false, false) => self.draw_pixel(tile_x + x, tile_y + y, rgb),
+                            (true, false) => self.draw_pixel(tile_x + 7 - x, tile_y + y, rgb),
+                            (false, true) => self.draw_pixel(tile_x + x, tile_y + 7 - y, rgb),
+                            (true, true) => self.draw_pixel(tile_x + 7 - x, tile_y + 7 - y, rgb),
+                        }
                     }
                 }
             }
-        }
+        //}
     }
 }

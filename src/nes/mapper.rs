@@ -1,4 +1,4 @@
-use crate::{ppu::Mirroring, cartridge::Cartridge};
+use crate::{nes::ppu::Mirroring, nes::cartridge::Cartridge};
 use std::fs::File;
 use std::io::Write;
 

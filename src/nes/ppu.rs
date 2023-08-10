@@ -1,5 +1,5 @@
-use crate::MAPPER;
-use crate::mapper::Mapper;
+use crate::nes::main::MAPPER;
+use crate::nes::mapper::Mapper;
 
 #[derive(Clone, Copy)]
 pub enum Mirroring {
@@ -47,6 +47,14 @@ impl PPU {
             palette: [0; 0x0020],
             oam_data: [0; 0x0100],
         }
+    }
+
+    pub fn show_sprite(&self) -> bool {
+        self.ppumask.show_sprite
+    }
+
+    pub fn show_back(&self) -> bool {
+        self.ppumask.show_back
     }
 
     fn mirror_palette_addr(&self, addr: u16) -> u16 {

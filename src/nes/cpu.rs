@@ -1,4 +1,4 @@
-use crate::Bus;
+use crate::nes::bus::Bus;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 

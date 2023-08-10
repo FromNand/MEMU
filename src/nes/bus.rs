@@ -1,8 +1,8 @@
-use crate::ppu::PPU;
-use crate::apu::APU;
-use crate::joypad::Joypad;
-use crate::MAPPER;
-use crate::mapper::Mapper;
+use crate::nes::ppu::PPU;
+use super::apu::APU;
+use super::joypad::Joypad;
+use super::main::MAPPER;
+use super::mapper::Mapper;
 
 pub struct Bus<'call> {
     work_ram: [u8; 0x0800],

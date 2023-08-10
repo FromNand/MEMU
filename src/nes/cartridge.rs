@@ -1,4 +1,4 @@
-use crate::ppu::Mirroring;
+use crate::nes::ppu::Mirroring;
 
 pub struct Cartridge {
     pub mapper: usize,
