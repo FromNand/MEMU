@@ -2,29 +2,23 @@
 
 #define between(start, address, end) (start <= address && address <= end)
 
-unsigned int cpu_cycle, ppu_cycle;
 ROM *rom;
 unsigned char internal_ram[0x800];
 
-extern unsigned char oam_data[256];
+extern unsigned int cpu_cycle;
 ROM *load_rom(char *file_name);
+void tick_ppu(unsigned int cycle);
+void init_ppu(void);
 void write_oam_data(unsigned char value);
 
 void tick(unsigned int cycle) {
     cpu_cycle += cycle;
-    ppu_cycle += cycle * 3;
-}
-
-unsigned int get_cpu_cycle(void) {
-    return cpu_cycle;
-}
-
-unsigned int get_ppu_cycle(void) {
-    return ppu_cycle;
+    tick_ppu(cycle * 3);
 }
 
 void init_bus(char *file_name) {
     rom = load_rom(file_name);
+    init_ppu();
 }
 
 unsigned char bus_read8(unsigned short address) {
@@ -49,10 +43,11 @@ void bus_write8(unsigned short address, unsigned char value) {
     } else if(between(0x2008, address, 0x3fff)) {
         bus_write8(address & 0x2007, value);
     } else if(address == 0x4014) {
+        tick((cpu_cycle % 2 == 0) ? 1 : 2);
         for(int i = 0; i < 256; i++) {
             write_oam_data(bus_read8((value << 8) + i));
+            tick(2);
         }
-        tick(513);
     } else {
         error("Unsupported bus write 0x%04X\n", address);
     }

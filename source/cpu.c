@@ -4,6 +4,8 @@
 
 // #define NESTEST
 
+unsigned int cpu_cycle;
+
 typedef enum {
     IMP, ACC, IMM, ZPG, ZPX, ZPY, ABS, ABX, ABY, IND, INX, INY, REL
 } Addressing_Mode;
@@ -46,7 +48,6 @@ typedef struct {
 CPU cpu;
 
 void tick(unsigned int cycle);
-unsigned int get_cpu_cycle(void);
 void init_bus(char *file_name);
 unsigned char bus_read8(unsigned short address);
 void bus_write8(unsigned short address, unsigned char value);
@@ -236,7 +237,7 @@ void _log(Instruction *i) {
             error("Unknown addressing mode\n");
     }
     fprintf(fp, "%4s %-28s", i->mnemonic, s);
-    fprintf(fp, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%d\n", cpu.a, cpu.x, cpu.y, get_flag(), cpu.s, get_cpu_cycle());
+    fprintf(fp, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%d\n", cpu.a, cpu.x, cpu.y, get_flag(), cpu.s, cpu_cycle);
 }
 
 void init_nes(char *file_name) {
@@ -876,3 +877,11 @@ Instruction instruction[] = {
     {0x43, "*SRE", sre,     INX, 2, 8, None  },
     {0x53, "*SRE", sre,     INY, 2, 7, Page  },
 };
+
+void nmi(void) {
+    push16(cpu.pc);
+    push8(get_flag());
+    cpu.pc = read16(0xfffa);
+    cpu.p.i = true;
+    tick(2);
+}

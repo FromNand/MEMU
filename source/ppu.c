@@ -1,13 +1,26 @@
 #include "common.h"
 #include <stdbool.h>
+#include <gtk-3.0/gtk/gtk.h>
 
 #define between(start, address, end) (start <= address && address <= end)
+#define MIRROR_HORIZONTAL (0)
+#define MIRROR_VERTICAL (1)
+#define TILE_PIXEL_SIZE (8)
+#define TILE_NUMBER_X (32)
+#define TILE_NUMBER_Y (30)
+#define PATTERN_BYTE_SIZE (16)
+#define PATTERN_TABLE_BYTE_SIZE (PATTERN_BYTE_SIZE * 256)
 
 extern ROM *rom;
+extern unsigned char frame[BYTE_PER_PIXEL * SCREEN_WIDTH * SCREEN_HEIGHT];
+extern GtkWidget *drawing_area;
 
-// 0x2005と0x2006で使用するアドレスラッチ
+void nmi(void);
+
+// 0x2005と0x2006で共有されるアドレスラッチ
 bool w;
 
+unsigned int ppu_cycle;
 unsigned char nametable[0x800];
 unsigned char *nametable_top_left, *nametable_top_right, *nametable_bottom_left, *nametable_bottom_right;
 unsigned char palette_table[0x20];
@@ -233,6 +246,120 @@ void write_ppu_data(unsigned char value) {
     ppu_address += ppu_control.increment_address ? 32 : 1;
 }
 
-void render(void) {
+// FIXME
+bool is_sprite0_hit(unsigned int scanline) {
+    return oam_data[0] == scanline && oam_data[3] <= ppu_cycle && ppu_mask.render_background && ppu_mask.render_sprite;
+}
 
+// FIXME
+void tick_ppu(unsigned int cycle) {
+    static unsigned int scanline;
+    ppu_cycle += cycle;
+    if(ppu_cycle >= 341) {
+        if(is_sprite0_hit(scanline)) {
+            ppu_status.sprite0_hit = true;
+        }
+        ppu_cycle = 0;
+        scanline += 1;
+        if(scanline == 241) {
+            gtk_widget_queue_draw(drawing_area);
+            ppu_status.in_vblank = true;
+            if(ppu_control.generate_nmi) {
+                nmi();
+            }
+        } else if(scanline == 262) {
+            scanline = 0;
+            ppu_status.sprite_overflow = false;
+            ppu_status.sprite0_hit = false;
+            ppu_status.in_vblank = false;
+        }
+    }
+}
+
+void init_ppu(void) {
+    w = false;
+    write_ppu_control(0);
+    write_ppu_mask(0);
+    oam_address = 0;
+    scroll_x = scroll_y = 0;
+    ppu_address = 0;
+    buffer = 0;
+
+    if(rom->mirroring == MIRROR_HORIZONTAL) {
+        switch(ppu_control.base_nametable_address) {
+            case 0: case 1:
+                nametable_top_left = nametable_top_right = nametable;
+                nametable_bottom_left = nametable_bottom_right = nametable + 0x400;
+                break;
+            case 2: case 3:
+                nametable_top_left = nametable_top_right = nametable + 0x400;
+                nametable_bottom_left = nametable_bottom_right = nametable;
+                break;
+        }
+    } else if(rom->mirroring == MIRROR_VERTICAL) {
+        switch(ppu_control.base_nametable_address) {
+            case 0: case 2:
+                nametable_top_left = nametable_bottom_left = nametable;
+                nametable_top_right = nametable_bottom_right = nametable + 0x400;
+                break;
+            case 1: case 3:
+                nametable_top_left = nametable_bottom_left = nametable + 0x400;
+                nametable_top_right = nametable_bottom_right = nametable;
+                break;
+        }
+    } else {
+        error("Unsupported mirroring\n");
+    }
+}
+
+unsigned char *create_palette(int palette_index) {
+    static unsigned char palette[4];
+    palette[0] = palette_table[0];
+    for(int i = 1; i <= 3; i++) {
+        palette[i] = palette_table[4 * palette_index + i];
+    }
+    return palette;
+}
+
+void render_pixel(int px, int py, unsigned char *c) {
+    *(unsigned int*)(frame + BYTE_PER_PIXEL * (px + SCREEN_WIDTH * py)) = *(unsigned int*)c;
+}
+
+void render_nametable(int base_px, int base_py, unsigned char *nametable) {
+    unsigned char *pattern_table = rom->character_rom + PATTERN_TABLE_BYTE_SIZE * ppu_control.background_pattern_table_address;
+    int stx, sty;
+    for(stx = 0; base_px + TILE_PIXEL_SIZE * (stx + 1) - 1 < 0; stx++);
+    for(sty = 0; base_py + TILE_PIXEL_SIZE * (sty + 1) - 1 < 0; sty++);
+    for(int ty = sty; ty < TILE_NUMBER_Y && base_py + TILE_PIXEL_SIZE * ty < SCREEN_HEIGHT; ty++) {
+        for(int tx = stx; tx < TILE_NUMBER_X && base_px + TILE_PIXEL_SIZE * tx < SCREEN_WIDTH; tx++) {
+            unsigned char attribute = nametable[0x3c0 + (tx / 4) + 8 * (ty / 4)];
+            unsigned char *palette = create_palette((attribute >> (2 * ((tx / 2) % 2) + 4 * ((ty / 2) % 2))) & 0x03);
+            unsigned char *pattern = pattern_table + PATTERN_BYTE_SIZE * nametable[tx + TILE_NUMBER_X * ty];
+            for(int py = 0; py < TILE_PIXEL_SIZE; py++) {
+                unsigned char pattern_low = pattern[py];
+                unsigned char pattern_high = pattern[py + 8];
+                for(int px = 0; px < TILE_PIXEL_SIZE; px++) {
+                    int x = base_px + TILE_PIXEL_SIZE * tx + px;
+                    int y = base_py + TILE_PIXEL_SIZE * ty + py;
+                    int color_index = ((pattern_low >> (7 - px)) & 1) + ((pattern_high >> (7 - px)) & 1) * 2;
+                    if(between(0, x, SCREEN_WIDTH) && between(0, y, SCREEN_HEIGHT)) {
+                        render_pixel(x, y, color + 3 * palette[color_index]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void render_background(void) {
+    render_nametable(-scroll_x, -scroll_y, nametable_top_left);
+    render_nametable(SCREEN_WIDTH - scroll_x, -scroll_y, nametable_top_right);
+    render_nametable(-scroll_x, SCREEN_HEIGHT - scroll_y, nametable_bottom_left);
+    render_nametable(SCREEN_WIDTH - scroll_x, SCREEN_HEIGHT - scroll_y, nametable_bottom_right);
+}
+
+void render(void) {
+    if(ppu_mask.render_background) {
+        render_background();
+    }
 }

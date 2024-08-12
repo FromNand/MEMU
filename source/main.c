@@ -4,6 +4,7 @@
 
 // FCEUXとNintendulatorを参考にする
 // nestestのPPUサイクルも確認する
+// デバッグウィンドウを実装する
 
 #define PIXEL_SIZE (3)
 #define FPS (30)
