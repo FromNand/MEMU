@@ -3,7 +3,7 @@
 #include <sys/time.h>
 
 // FCEUXとNintendulatorを参考にする
-// program_romはCPU、character_romはPPUに接続される
+// nestestのPPUサイクルも確認する
 
 #define PIXEL_SIZE (3)
 #define FPS (30)

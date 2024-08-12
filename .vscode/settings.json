@@ -1,13 +1,13 @@
 {
     "files.associations": {
-        "gtk.h": "c",
-        "common.h": "c",
+        "optional": "c",
+        "ratio": "c",
+        "system_error": "c",
         "array": "c",
-        "deque": "c",
-        "string": "c",
-        "unordered_map": "c",
-        "vector": "c",
-        "string_view": "c",
-        "initializer_list": "c"
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "common.h": "c"
     }
 }

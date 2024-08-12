@@ -12,6 +12,7 @@ typedef struct {
     unsigned char *character_rom;
     unsigned int character_rom_size;
     unsigned int mirroring;
+    unsigned int mapper;
 } ROM;
 
 void error(char *message, ...);

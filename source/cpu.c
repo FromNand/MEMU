@@ -45,12 +45,11 @@ typedef struct {
 
 CPU cpu;
 
+void tick(unsigned int cycle);
+unsigned int get_cpu_cycle(void);
 void init_bus(char *file_name);
 unsigned char bus_read8(unsigned short address);
 void bus_write8(unsigned short address, unsigned char value);
-unsigned int get_cpu_cycle(void);
-void cpu_tick(unsigned int cycle);
-void ppu_tick(unsigned int cycle);
 
 void set_flag(unsigned char value) {
     cpu.p.c = (value & 0x01) != 0;
@@ -82,8 +81,7 @@ unsigned short read16(unsigned short address) {
 
 unsigned short bug_read16(unsigned short address) {
     if((address & 0xff) == 0xff) {
-        unsigned char value = read8(address);
-        return value + (read8(address & 0xff00) << 8);
+        return read8(address) + (read8(address & 0xff00) << 8);
     } else {
         return read16(address);
     }
@@ -174,10 +172,10 @@ void _log(Instruction *i) {
         if(fp == NULL) {
             error("Cannot open ./rom/memu.log\n");
         }
-        cpu_tick(7);
+        tick(7);
     } else if(count == 8992) {
         fclose(fp);
-        error("Logging is finished\n");
+        error("Log finished\n");
     }
 
     fprintf(fp, "%04X  ", cpu.pc);
@@ -265,8 +263,7 @@ gboolean run_nes(gpointer data) {
 #endif
     i->function();
     cpu.pc += i->length;
-    cpu_tick(i->cycle + cpu.extra_cycle);
-    ppu_tick(i->cycle + cpu.extra_cycle);
+    tick(i->cycle + cpu.extra_cycle);
     return G_SOURCE_CONTINUE;
 }
 

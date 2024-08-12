@@ -22,9 +22,10 @@ ROM *load_rom(char *file_name) {
     }
     rom->program_rom_size = 1024 * 16 * rom->rom[4];
     rom->character_rom_size = 1024 * 8 * rom->rom[5];
-    rom->mirroring = rom->rom[6] & 0x01;
+    rom->mirroring = (rom->rom[6] & 0x01) + ((rom->rom[6] & 0x08) >> 2);
     rom->program_rom = rom->rom + 16 + ((rom->rom[6] & 0x04) ? 512 : 0);
     rom->character_rom = rom->program_rom + rom->program_rom_size;
+    rom->mapper = (rom->rom[6] >> 4) + (rom->rom[7] & 0xf0);
 
     return rom;
 }
