@@ -5,6 +5,7 @@
 // #define NESTEST
 
 unsigned int cpu_cycle;
+extern unsigned int ppu_cycle, scanline;
 
 typedef enum {
     IMP, ACC, IMM, ZPG, ZPX, ZPY, ABS, ABX, ABY, IND, INX, INY, REL
@@ -237,7 +238,7 @@ void _log(Instruction *i) {
             error("Unknown addressing mode\n");
     }
     fprintf(fp, "%4s %-28s", i->mnemonic, s);
-    fprintf(fp, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%d\n", cpu.a, cpu.x, cpu.y, get_flag(), cpu.s, cpu_cycle);
+    fprintf(fp, "A:%02X X:%02X Y:%02X P:%02X SP:%02X PPU:%3d,%3d CYC:%d\n", cpu.a, cpu.x, cpu.y, get_flag(), cpu.s, scanline, ppu_cycle, cpu_cycle);
 }
 
 void init_nes(char *file_name) {

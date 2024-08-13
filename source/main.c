@@ -3,11 +3,10 @@
 #include <sys/time.h>
 
 // FCEUXとNintendulatorを参考にする
-// nestestのPPUサイクルも確認する
 // デバッグウィンドウを実装する
 
 #define PIXEL_SIZE (3)
-#define FPS (30)
+#define FPS (60)
 
 int draw_count;
 GtkWidget *drawing_area;

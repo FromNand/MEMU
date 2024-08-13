@@ -20,7 +20,7 @@ void nmi(void);
 // 0x2005と0x2006で共有されるアドレスラッチ
 bool w;
 
-unsigned int ppu_cycle;
+unsigned int ppu_cycle, scanline;
 unsigned char nametable[0x800];
 unsigned char *nametable_top_left, *nametable_top_right, *nametable_bottom_left, *nametable_bottom_right;
 unsigned char palette_table[0x20];
@@ -60,15 +60,6 @@ typedef struct {
 
 PPU_Control ppu_control;
 
-void write_ppu_control(unsigned char value) {
-    ppu_control.base_nametable_address = (value >> 0) & 0x03;
-    ppu_control.increment_address = (value >> 2) & 0x01;
-    ppu_control.sprite_pattern_table_address = (value >> 3) & 0x01;
-    ppu_control.background_pattern_table_address = (value >> 4) & 0x01;
-    ppu_control.sprite_size = (value >> 5) & 0x01;
-    ppu_control.generate_nmi = (value >> 7) & 0x01;
-}
-
 // 0x2001 (Write)
 // render_leftmost_backgroundとrender_leftmost_spriteはピクセルマスクである
 typedef struct {
@@ -106,6 +97,19 @@ typedef struct {
 } PPU_Status;
 
 PPU_Status ppu_status;
+
+void write_ppu_control(unsigned char value) {
+    bool old_generate_nmi = ppu_control.generate_nmi;
+    ppu_control.base_nametable_address = (value >> 0) & 0x03;
+    ppu_control.increment_address = (value >> 2) & 0x01;
+    ppu_control.sprite_pattern_table_address = (value >> 3) & 0x01;
+    ppu_control.background_pattern_table_address = (value >> 4) & 0x01;
+    ppu_control.sprite_size = (value >> 5) & 0x01;
+    ppu_control.generate_nmi = (value >> 7) & 0x01;
+    if(old_generate_nmi == false && ppu_control.generate_nmi == true && ppu_status.in_vblank == true) {
+        nmi();
+    }
+}
 
 unsigned char read_ppu_status(void) {
     unsigned char value = 0;
@@ -215,7 +219,7 @@ unsigned char read_ppu_data(void) {
 void write_ppu_data(unsigned char value) {
     ppu_address &= 0x3fff;
     if(between(0x0000, ppu_address, 0x1fff)) {
-        error("Unsupported CHR-ROM write\n");
+        // error("Unsupported CHR-ROM write\n");
     } else if(between(0x2000, ppu_address, 0x3eff)) {
         switch((ppu_address >> 10) & 0x03) {
             case 0:
@@ -247,19 +251,18 @@ void write_ppu_data(unsigned char value) {
 }
 
 // FIXME
-bool is_sprite0_hit(unsigned int scanline) {
+bool is_sprite0_hit(void) {
     return oam_data[0] == scanline && oam_data[3] <= ppu_cycle && ppu_mask.render_background && ppu_mask.render_sprite;
 }
 
 // FIXME
 void tick_ppu(unsigned int cycle) {
-    static unsigned int scanline;
     ppu_cycle += cycle;
     if(ppu_cycle >= 341) {
-        if(is_sprite0_hit(scanline)) {
+        if(is_sprite0_hit()) {
             ppu_status.sprite0_hit = true;
         }
-        ppu_cycle = 0;
+        ppu_cycle -= 341;
         scanline += 1;
         if(scanline == 241) {
             gtk_widget_queue_draw(drawing_area);
@@ -327,6 +330,7 @@ void render_pixel(int px, int py, unsigned char *c) {
 
 void render_nametable(int base_px, int base_py, unsigned char *nametable) {
     unsigned char *pattern_table = rom->character_rom + PATTERN_TABLE_BYTE_SIZE * ppu_control.background_pattern_table_address;
+    int sx = ppu_mask.render_leftmost_background ? 0 : 8;
     int stx, sty;
     for(stx = 0; base_px + TILE_PIXEL_SIZE * (stx + 1) - 1 < 0; stx++);
     for(sty = 0; base_py + TILE_PIXEL_SIZE * (sty + 1) - 1 < 0; sty++);
@@ -342,7 +346,7 @@ void render_nametable(int base_px, int base_py, unsigned char *nametable) {
                     int x = base_px + TILE_PIXEL_SIZE * tx + px;
                     int y = base_py + TILE_PIXEL_SIZE * ty + py;
                     int color_index = ((pattern_low >> (7 - px)) & 1) + ((pattern_high >> (7 - px)) & 1) * 2;
-                    if(between(0, x, SCREEN_WIDTH) && between(0, y, SCREEN_HEIGHT)) {
+                    if(between(sx, x, SCREEN_WIDTH) && between(0, y, SCREEN_HEIGHT)) {
                         render_pixel(x, y, color + 3 * palette[color_index]);
                     }
                 }
