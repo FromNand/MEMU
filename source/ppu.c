@@ -156,9 +156,9 @@ unsigned short ppu_address;
 
 void write_ppu_address(unsigned char value) {
     if(w == false) {
-        ppu_address |= value << 8;
+        ppu_address = (ppu_address & 0x00ff) + (value << 8);
     } else {
-        ppu_address |= value;
+        ppu_address = (ppu_address & 0xff00) + value;
     }
     w = !w;
 }
