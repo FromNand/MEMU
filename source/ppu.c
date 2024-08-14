@@ -340,8 +340,8 @@ void render_nametable(int base_px, int base_py, unsigned char *nametable) {
     int stx, sty;
     for(stx = 0; base_px + TILE_PIXEL_SIZE * (stx + 1) - 1 < 0; stx++);
     for(sty = 0; base_py + TILE_PIXEL_SIZE * (sty + 1) - 1 < 0; sty++);
-    for(int ty = sty; ty < TILE_NUMBER_Y && base_py + TILE_PIXEL_SIZE * ty < SCREEN_BLOCK_HEIGHT; ty++) {
-        for(int tx = stx; tx < TILE_NUMBER_X && base_px + TILE_PIXEL_SIZE * tx < SCREEN_BLOCK_WIDTH; tx++) {
+    for(int ty = sty; ty < TILE_NUMBER_Y && base_py + TILE_PIXEL_SIZE * (ty + 1) - 1 < SCREEN_BLOCK_HEIGHT; ty++) {
+        for(int tx = stx; tx < TILE_NUMBER_X && base_px + TILE_PIXEL_SIZE * (tx + 1) - 1 < SCREEN_BLOCK_WIDTH; tx++) {
             unsigned char attribute = nametable[0x3c0 + (tx / 4) + 8 * (ty / 4)];
             unsigned char *palette = create_palette((attribute >> (2 * ((tx / 2) % 2) + 4 * ((ty / 2) % 2))) & 0x03);
             unsigned char *pattern = pattern_table + PATTERN_BYTE_SIZE * nametable[tx + TILE_NUMBER_X * ty];

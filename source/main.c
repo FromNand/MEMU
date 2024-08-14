@@ -2,7 +2,7 @@
 #include <gtk-3.0/gtk/gtk.h>
 #include <sys/time.h>
 
-// レンダリングと描画処理を改善し、FPSを上げる
+// レンダリングや描画処理は思いの外速いので、CPUを高速化するとFPSが改善されるかも
 // スプライトを実装する
 // デバッグウィンドウを実装する
 
@@ -109,8 +109,8 @@ gboolean draw(GtkWidget *widget, cairo_t *cairo, gpointer data) {
     cairo_set_source_surface(cairo, surface, 0, 0);
     cairo_paint(cairo);
     cairo_surface_destroy(surface);
-    static struct timeval last_time;
     struct timeval current_time;
+    static struct timeval last_time;
     gettimeofday(&current_time, NULL);
     long sleep_time = (1000 * 1000 / FPS) - (1000 * 1000 * (current_time.tv_sec - last_time.tv_sec) + (current_time.tv_usec - last_time.tv_usec));
     if(sleep_time > 0) {
