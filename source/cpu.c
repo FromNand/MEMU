@@ -887,3 +887,26 @@ void nmi(void) {
     cpu.p.i = true;
     tick(2);
 }
+
+bool parallel_mode;
+int button_index;
+unsigned char button_status;
+
+unsigned char read_joypad(void) {
+    if(button_index > 7) {
+        return 1;
+    } else {
+        unsigned char value = (button_status >> button_index) & 0x01;
+        if(parallel_mode == false) {
+            button_index += 1;
+        }
+        return value;
+    }
+}
+
+void write_joypad(unsigned char value) {
+    parallel_mode = (value & 0x01) != 0;
+    if(parallel_mode == true) {
+        button_index = 0;
+    }
+}

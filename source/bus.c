@@ -19,6 +19,8 @@ void write_ppu_scroll(unsigned char value);
 void write_ppu_address(unsigned char value);
 unsigned char read_ppu_data(void);
 void write_ppu_data(unsigned char value);
+unsigned char read_joypad(void);
+void write_joypad(unsigned char value);
 
 void tick(unsigned int cycle) {
     cpu_cycle += cycle;
@@ -41,13 +43,15 @@ unsigned char bus_read8(unsigned short address) {
         return read_ppu_data();
     } else if(between(0x2008, address, 0x3fff)) {
         return bus_read8(address & 0x2007);
+    } else if(address == 0x4016) {
+        return read_joypad();
     } else if(between(0x8000, address, 0xffff)) {
         if(rom->program_rom_size == 0x4000) {
             return rom->program_rom[address & 0x3fff];
         } else {
             return rom->program_rom[address - 0x8000];
         }
-    } else if(address == 0x4016 || address == 0x4017) {
+    } else if(address == 0x4017) {
         return 0;
     } else {
         error("Unsupported bus read 0x%04X\n", address);
@@ -79,10 +83,12 @@ void bus_write8(unsigned short address, unsigned char value) {
             write_oam_data(bus_read8((value << 8) + i));
             tick(2);
         }
+    } else if(address == 0x4016) {
+        write_joypad(value);
     } else if(address == 0x4000 || address == 0x4001 || address == 0x4002 || address == 0x4003 || address == 0x4004 || \
             address == 0x4005 || address == 0x4006 || address == 0x4007 || address == 0x4008 || address == 0x400a || \
             address == 0x400b || address == 0x400c || address == 0x400e || address == 0x400f || \
-            address == 0x4010 || address == 0x4011 || address == 0x4015 || address == 0x4016) {
+            address == 0x4010 || address == 0x4011 || address == 0x4015) {
 
     } else {
         error("Unsupported bus write 0x%04X\n", address);
