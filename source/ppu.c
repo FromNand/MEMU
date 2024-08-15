@@ -106,6 +106,31 @@ void write_ppu_control(unsigned char value) {
     ppu_control.background_pattern_table_address = (value >> 4) & 0x01;
     ppu_control.sprite_size = (value >> 5) & 0x01;
     ppu_control.generate_nmi = (value >> 7) & 0x01;
+    if(rom->mirroring == MIRROR_HORIZONTAL) {
+        switch(ppu_control.base_nametable_address) {
+            case 0: case 1:
+                nametable_top_left = nametable_top_right = nametable;
+                nametable_bottom_left = nametable_bottom_right = nametable + 0x400;
+                break;
+            case 2: case 3:
+                nametable_top_left = nametable_top_right = nametable + 0x400;
+                nametable_bottom_left = nametable_bottom_right = nametable;
+                break;
+        }
+    } else if(rom->mirroring == MIRROR_VERTICAL) {
+        switch(ppu_control.base_nametable_address) {
+            case 0: case 2:
+                nametable_top_left = nametable_bottom_left = nametable;
+                nametable_top_right = nametable_bottom_right = nametable + 0x400;
+                break;
+            case 1: case 3:
+                nametable_top_left = nametable_bottom_left = nametable + 0x400;
+                nametable_top_right = nametable_bottom_right = nametable;
+                break;
+        }
+    } else {
+        error("Unsupported mirroring\n");
+    }
     if(old_generate_nmi == false && ppu_control.generate_nmi == true && ppu_status.in_vblank == true) {
         nmi();
     }
@@ -287,32 +312,6 @@ void init_ppu(void) {
     scroll_x = scroll_y = 0;
     ppu_address = 0;
     buffer = 0;
-
-    if(rom->mirroring == MIRROR_HORIZONTAL) {
-        switch(ppu_control.base_nametable_address) {
-            case 0: case 1:
-                nametable_top_left = nametable_top_right = nametable;
-                nametable_bottom_left = nametable_bottom_right = nametable + 0x400;
-                break;
-            case 2: case 3:
-                nametable_top_left = nametable_top_right = nametable + 0x400;
-                nametable_bottom_left = nametable_bottom_right = nametable;
-                break;
-        }
-    } else if(rom->mirroring == MIRROR_VERTICAL) {
-        switch(ppu_control.base_nametable_address) {
-            case 0: case 2:
-                nametable_top_left = nametable_bottom_left = nametable;
-                nametable_top_right = nametable_bottom_right = nametable + 0x400;
-                break;
-            case 1: case 3:
-                nametable_top_left = nametable_bottom_left = nametable + 0x400;
-                nametable_top_right = nametable_bottom_right = nametable;
-                break;
-        }
-    } else {
-        error("Unsupported mirroring\n");
-    }
 }
 
 unsigned char *create_palette(int palette_index) {
