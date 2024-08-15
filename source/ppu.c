@@ -368,8 +368,47 @@ void render_background(void) {
     render_nametable(SCREEN_BLOCK_WIDTH - scroll_x, SCREEN_BLOCK_HEIGHT - scroll_y, nametable_bottom_right);
 }
 
+void render_sprite(void) {
+    unsigned char *pattern_table = rom->character_rom + PATTERN_TABLE_BYTE_SIZE * ppu_control.sprite_pattern_table_address;
+    for(int i = 63; i >= 0; i--) {
+        unsigned char base_py = oam_data[4 * i + 0];
+        unsigned char tile_index = oam_data[4 * i + 1];
+        unsigned char attribute = oam_data[4 * i + 2];
+        unsigned char base_px = oam_data[4 * i + 3];
+
+        unsigned char *palette = palette_table + 0x10 + 4 * (attribute & 0x03);
+        bool behind_background = (attribute & 0x20) != 0;
+        bool flip_horizontal = (attribute & 0x40) != 0;
+        bool flip_vertical = (attribute & 0x80) != 0;
+
+        int max_px = TILE_PIXEL_SIZE;
+        int max_py = TILE_PIXEL_SIZE;
+        if(base_px + TILE_PIXEL_SIZE - 1 >= SCREEN_BLOCK_WIDTH) {
+            max_px = SCREEN_BLOCK_WIDTH - base_px;
+        }
+        if(base_py + TILE_PIXEL_SIZE - 1 >= SCREEN_BLOCK_HEIGHT) {
+            max_py = SCREEN_BLOCK_HEIGHT - base_py;
+        }
+
+        unsigned char *pattern = pattern_table + PATTERN_BYTE_SIZE * tile_index;
+        for(int py = 0; py < max_py; py++) {
+            unsigned char pattern_low = pattern[py];
+            unsigned char pattern_high = pattern[py + 8];
+            for(int px = 0; px < max_px; px++) {
+                int color_index = ((pattern_low >> (7 - px)) & 1) + ((pattern_high >> (7 - px)) & 1) * 2;
+                if(color_index) {
+                    render_pixel(base_px + px, base_py + py, color + 3 * palette[color_index]);
+                }
+            }
+        }
+    }
+}
+
 void render(void) {
     if(ppu_mask.render_background) {
         render_background();
+    }
+    if(ppu_mask.render_sprite) {
+        render_sprite();
     }
 }
