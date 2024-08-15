@@ -381,21 +381,17 @@ void render_sprite(void) {
         bool flip_horizontal = (attribute & 0x40) != 0;
         bool flip_vertical = (attribute & 0x80) != 0;
 
-        int max_px = TILE_PIXEL_SIZE;
-        int max_py = TILE_PIXEL_SIZE;
-        if(base_px + TILE_PIXEL_SIZE - 1 >= SCREEN_BLOCK_WIDTH) {
-            max_px = SCREEN_BLOCK_WIDTH - base_px;
-        }
-        if(base_py + TILE_PIXEL_SIZE - 1 >= SCREEN_BLOCK_HEIGHT) {
-            max_py = SCREEN_BLOCK_HEIGHT - base_py;
-        }
+        int max_px = (base_px + TILE_PIXEL_SIZE - 1) < SCREEN_BLOCK_WIDTH ? TILE_PIXEL_SIZE : SCREEN_BLOCK_WIDTH - base_px;
+        int max_py = (base_py + TILE_PIXEL_SIZE - 1) < SCREEN_BLOCK_HEIGHT ? TILE_PIXEL_SIZE : SCREEN_BLOCK_HEIGHT - base_py;
 
         unsigned char *pattern = pattern_table + PATTERN_BYTE_SIZE * tile_index;
         for(int py = 0; py < max_py; py++) {
-            unsigned char pattern_low = pattern[py];
-            unsigned char pattern_high = pattern[py + 8];
+            int pattern_index = flip_vertical == false ? py : 7 - py;
+            unsigned char pattern_low = pattern[pattern_index];
+            unsigned char pattern_high = pattern[pattern_index + 8];
             for(int px = 0; px < max_px; px++) {
-                int color_index = ((pattern_low >> (7 - px)) & 1) + ((pattern_high >> (7 - px)) & 1) * 2;
+                pattern_index = flip_horizontal == false ? px : 7 - px;
+                int color_index = ((pattern_low >> (7 - pattern_index)) & 1) + ((pattern_high >> (7 - pattern_index)) & 1) * 2;
                 if(color_index) {
                     render_pixel(base_px + px, base_py + py, color + 3 * palette[color_index]);
                 }
