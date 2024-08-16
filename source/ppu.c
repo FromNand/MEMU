@@ -318,14 +318,22 @@ void render_nametable(int base_px, int base_py, unsigned char *_nametable) {
     for(sty = 0; base_py + TILE_PIXEL_SIZE * (sty + 1) - 1 < 0; sty++);
     int ty = scanline / TILE_PIXEL_SIZE;
     if(between(sty, ty, TILE_NUMBER_Y - 1) && base_py + TILE_PIXEL_SIZE * ty < SCREEN_BLOCK_HEIGHT) {
+        int spy = 0;
+        if(base_py < 0 && ty == sty) {
+            spy = (-base_py) % TILE_PIXEL_SIZE;
+        }
         for(int tx = stx; tx < TILE_NUMBER_X && base_px + TILE_PIXEL_SIZE * tx < SCREEN_BLOCK_WIDTH; tx++) {
             unsigned char *pattern = pattern_table + PATTERN_BYTE_SIZE * _nametable[tx + TILE_NUMBER_X * ty];
             unsigned char attribute = _nametable[0x3c0 + (tx / 4) + 8 * (ty / 4)];
             unsigned char *palette = create_palette((attribute >> (2 * ((tx / 2) % 2) + 4 * ((ty / 2) % 2))) & 0x03);
-            for(int py = 0, y = base_py + TILE_PIXEL_SIZE * ty; py < TILE_PIXEL_SIZE && between(0, y, SCREEN_BLOCK_HEIGHT - 1); py++, y++) {
+            int spx = 0;
+            if(base_px < 0 && tx == stx) {
+                spx = (-base_px) % TILE_PIXEL_SIZE;
+            }
+            for(int py = spy, y = base_py + TILE_PIXEL_SIZE * ty + spy; py < TILE_PIXEL_SIZE && between(0, y, SCREEN_BLOCK_HEIGHT - 1); py++, y++) {
                 unsigned char pattern_low = pattern[py];
                 unsigned char pattern_high = pattern[py + 8];
-                for(int px = 0, x = base_px + TILE_PIXEL_SIZE * tx; px < TILE_PIXEL_SIZE && between(sx, x, SCREEN_BLOCK_WIDTH - 1); px++, x++) {
+                for(int px = spx, x = base_px + TILE_PIXEL_SIZE * tx + spx; px < TILE_PIXEL_SIZE && between(sx, x, SCREEN_BLOCK_WIDTH - 1); px++, x++) {
                     int color_index = ((pattern_low >> (7 - px)) & 1) + ((pattern_high >> (7 - px)) & 1) * 2;
                     render_pixel(x, y, color + 3 * palette[color_index]);
                 }
@@ -356,6 +364,11 @@ void render_sprite(void) {
             bool behind_background = (attribute & 0x20) != 0;
             bool flip_horizontal = (attribute & 0x40) != 0;
             bool flip_vertical = (attribute & 0x80) != 0;
+
+            // FIXME
+            // if(behind_background) {
+            //     continue;
+            // }
 
             int max_px = (base_px + TILE_PIXEL_SIZE - 1) < SCREEN_BLOCK_WIDTH ? TILE_PIXEL_SIZE : SCREEN_BLOCK_WIDTH - base_px;
             int max_py = (base_py + TILE_PIXEL_SIZE - 1) < SCREEN_BLOCK_HEIGHT ? TILE_PIXEL_SIZE : SCREEN_BLOCK_HEIGHT - base_py;
