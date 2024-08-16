@@ -98,6 +98,7 @@ typedef struct {
 
 PPU_Status ppu_status;
 
+// 表示する方法として4つの領域に分けているが、実際の読み書きにはnametable_top_leftなどは使わないこと
 void set_nametable(void) {
     if(rom->mirroring == MIRROR_HORIZONTAL) {
         switch(ppu_control.base_nametable_address) {
@@ -209,28 +210,35 @@ void write_ppu_address(unsigned char value) {
 // 0x4000-0xffff 0x0000-0x3fffのミラー
 unsigned char buffer;
 
+unsigned short mirror_nametable_address(unsigned short address) {
+    unsigned short nametable_address = address & 0xfff;
+    int nametable_index = (address >> 10) & 0x03;
+    if(rom->mirroring == MIRROR_HORIZONTAL) {
+        switch(nametable_index) {
+            case 0:
+                return nametable_address;
+            case 1: case 2:
+                return nametable_address - 0x400;
+            case 3:
+                return nametable_address - 0x800;
+        }
+    } else if(rom->mirroring == MIRROR_VERTICAL) {
+        switch(nametable_index) {
+            case 0: case 1:
+                return nametable_address;
+            case 2: case 3:
+                return nametable_address - 0x800;
+        }
+    }
+}
+
 unsigned char read_ppu_data(void) {
     unsigned char value = buffer;
     ppu_address &= 0x3fff;
     if(between(0x0000, ppu_address, 0x1fff)) {
         buffer = rom->character_rom[ppu_address];
     } else if(between(0x2000, ppu_address, 0x3eff)) {
-        switch((ppu_address >> 10) & 0x03) {
-            case 0:
-                buffer = nametable_top_left[ppu_address & 0x3ff];
-                break;
-            case 1:
-                buffer = nametable_top_right[ppu_address & 0x3ff];
-                break;
-            case 2:
-                buffer = nametable_bottom_left[ppu_address & 0x3ff];
-                break;
-            case 3:
-                buffer = nametable_bottom_right[ppu_address & 0x3ff];
-                break;
-            default:
-                error("Invalid nametable read\n");
-        }
+        buffer = nametable[mirror_nametable_address(ppu_address)];
     } else if(between(0x3f00, ppu_address, 0x3fff)) {
         unsigned int nibble = ppu_address & 0xf;
         if((ppu_address & 0x10) != 0 && (nibble == 0x0 || nibble == 0x4 || nibble == 0x8 || nibble == 0xc)) {
@@ -253,22 +261,7 @@ void write_ppu_data(unsigned char value) {
     if(between(0x0000, ppu_address, 0x1fff)) {
         // error("Unsupported CHR-ROM write\n");
     } else if(between(0x2000, ppu_address, 0x3eff)) {
-        switch((ppu_address >> 10) & 0x03) {
-            case 0:
-                nametable_top_left[ppu_address & 0x3ff] = value;
-                break;
-            case 1:
-                nametable_top_right[ppu_address & 0x3ff] = value;
-                break;
-            case 2:
-                nametable_bottom_left[ppu_address & 0x3ff] = value;
-                break;
-            case 3:
-                nametable_bottom_right[ppu_address & 0x3ff] = value;
-                break;
-            default:
-                error("Invalid nametable write\n");
-        }
+        nametable[mirror_nametable_address(ppu_address)] = value;
     } else if(between(0x3f00, ppu_address, 0x3fff)) {
         unsigned int nibble = ppu_address & 0xf;
         if((ppu_address & 0x10) != 0 && (nibble == 0x0 || nibble == 0x4 || nibble == 0x8 || nibble == 0xc)) {
