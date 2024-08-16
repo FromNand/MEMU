@@ -1,8 +1,8 @@
 #include "common.h"
 #include <gtk-3.0/gtk/gtk.h>
-#include <sys/time.h>
 
-// SMBの左端の背景がおかしい & スコアが点滅している
+// SMBの上と左の8ピクセルがおかしい
+// スコアバーの点滅 (スクロールとネームテーブルに関連したバグ)
 // SMBのキノコがブロックの前面に表示される (OAMのbehind_backgroundを反映するために、行ごとのレンダリングが必要)
 
 // 左端8ピクセルのスプライトの非表示
@@ -113,14 +113,15 @@ gboolean draw(GtkWidget *widget, cairo_t *cairo, gpointer data) {
     cairo_set_source_surface(cairo, surface, 0, 0);
     cairo_paint(cairo);
     cairo_surface_destroy(surface);
-    struct timeval current_time;
-    static struct timeval last_time;
-    gettimeofday(&current_time, NULL);
-    long sleep_time = (1000 * 1000 / FPS) - (1000 * 1000 * (current_time.tv_sec - last_time.tv_sec) + (current_time.tv_usec - last_time.tv_usec));
+    struct timespec current_time;
+    static struct timespec last_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+    long sleep_time = (1000 * 1000 * 1000 / FPS) - (1000 * 1000 * 1000 * (current_time.tv_sec - last_time.tv_sec) + (current_time.tv_nsec - last_time.tv_nsec));
     if(sleep_time > 0) {
-        g_usleep(sleep_time);
+        struct timespec request_time = {sleep_time / (1000 * 1000 * 1000), sleep_time % (1000 * 1000 * 1000)};
+        nanosleep(&request_time, NULL);
     }
-    gettimeofday(&last_time, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &last_time);
     return TRUE;
 }
 

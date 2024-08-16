@@ -11,7 +11,8 @@
                 "/usr/include/cairo",
                 "/usr/include/gdk-pixbuf-2.0",
                 "/usr/include/atk-1.0"
-            ]
+            ],
+            "cStandard": "gnu99"
         }
     ],
     "version": 4
