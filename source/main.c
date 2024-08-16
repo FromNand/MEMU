@@ -2,11 +2,15 @@
 #include <gtk-3.0/gtk/gtk.h>
 #include <sys/time.h>
 
-// 左端8ピクセルの非表示
-// スプライトが背景の後ろに隠れる場合
-// スプライトオーバーフローとスプライトゼロヒット
-// 8*16モードのスプライトの反転処理 (垂直方向はタイルの交換)
-// 8*16モードではoam_dataのバイト1を使用してパターンテーブルを参照する
+// SMBの左端の背景がおかしい
+// SMBで変な背景とスプライトが表示される (タイルがスライドしたり、色が変わったりしているため、ネームテーブルが疑われる)
+
+// 左端8ピクセルのスプライトの非表示
+// 背景の後ろに隠れるスプライト
+// スプライトオーバーフローの実装
+// スプライトゼロヒットの判定と背景レンダリングをスキャンライン毎に行う
+// 8*16モードの垂直反転はタイルの交換である (8*16モードでは、oam_dataのバイト1を使用してパターンテーブルを探す)
+
 // PPUレジスタの機能を確認し実装する
 
 #define FPS (60)
@@ -19,7 +23,6 @@ extern unsigned char button_status;
 
 void init_nes(char *file_name);
 gboolean run_nes(gpointer data);
-void render(void);
 
 void error(char *message, ...) {
     va_list argument;
@@ -107,7 +110,6 @@ gboolean key_release(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
 gboolean draw(GtkWidget *widget, cairo_t *cairo, gpointer data) {
     draw_count += 1;
-    render();
     cairo_surface_t *surface = cairo_image_surface_create_for_data(frame, CAIRO_FORMAT_RGB24, SCREEN_PIXEL_WIDTH, SCREEN_PIXEL_HEIGHT, BYTE_PER_PIXEL * SCREEN_PIXEL_WIDTH);
     cairo_set_source_surface(cairo, surface, 0, 0);
     cairo_paint(cairo);

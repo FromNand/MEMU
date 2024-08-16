@@ -86,9 +86,9 @@ void bus_write8(unsigned short address, unsigned char value) {
     } else if(address == 0x4016) {
         write_joypad(value);
     } else if(address == 0x4000 || address == 0x4001 || address == 0x4002 || address == 0x4003 || address == 0x4004 || \
-            address == 0x4005 || address == 0x4006 || address == 0x4007 || address == 0x4008 || address == 0x400a || \
-            address == 0x400b || address == 0x400c || address == 0x400e || address == 0x400f || \
-            address == 0x4010 || address == 0x4011 || address == 0x4015 || address == 0x4017) {
+            address == 0x4005 || address == 0x4006 || address == 0x4007 || address == 0x4008 || address == 0x4009 || \
+            address == 0x400a || address == 0x400b || address == 0x400c || address == 0x400d || address == 0x400e || \
+            address == 0x400f || address == 0x4010 || address == 0x4011 || address == 0x4015 || address == 0x4017) {
 
     } else {
         error("Unsupported bus write 0x%04X\n", address);
