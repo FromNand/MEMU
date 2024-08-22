@@ -261,8 +261,6 @@ void write_ppu_data(unsigned char value) {
     if(between(0x0000, ppu_address, 0x1fff)) {
         if(rom->has_character_ram) {
             rom->character_rom[ppu_address] = value;
-        } else {
-            error("Cannot write to CHR-ROM\n");
         }
     } else if(between(0x2000, ppu_address, 0x3eff)) {
         nametable[mirror_nametable_address(ppu_address)] = value;

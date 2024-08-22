@@ -1,10 +1,22 @@
 #include "common.h"
 #include <gtk-3.0/gtk/gtk.h>
 
+// **** 変更 ****
 // nestest.nesを差し替えた
 // カラーパレットを修正した
 // CHR-ROMが存在しない場合はCHR-RAMを使用する (CHR-ROMは書き込み不可だが、CHR-RAMは書き込み可能)
 
+// **** 保留 ****
+// push・pop
+// brk
+// nmi
+// read_prg_rom
+// oam dma
+// write_palette_tableを実装し、write_dataに付け足す (動画) => スキャンライン毎に異なるパレットを使用できる
+// init_ppu
+// wラッチの共有をなくす (ppu_address & 0x3fffをwrite_to_addrにつける)
+
+// **** 問題 ****
 // color_test.nes: スプライト非表示が正しく処理されない
 // color_test.nes: ネームテーブルの更新が無い場合でもスプライトがチラつく
 
