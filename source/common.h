@@ -1,6 +1,8 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
+#include <stdbool.h>
+
 #define SCREEN_BLOCK_WIDTH (256)
 #define SCREEN_BLOCK_HEIGHT (240)
 #define BYTE_PER_PIXEL (4)
@@ -14,6 +16,7 @@ typedef struct {
     unsigned int program_rom_size;
     unsigned char *character_rom;
     unsigned int character_rom_size;
+    bool has_character_ram;
     unsigned int mirroring;
     unsigned int mapper;
 } ROM;

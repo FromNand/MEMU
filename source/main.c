@@ -1,6 +1,13 @@
 #include "common.h"
 #include <gtk-3.0/gtk/gtk.h>
 
+// nestest.nesを差し替えた
+// カラーパレットを修正した
+// CHR-ROMが存在しない場合はCHR-RAMを使用する (CHR-ROMは書き込み不可だが、CHR-RAMは書き込み可能)
+
+// color_test.nes: スプライト非表示が正しく処理されない
+// color_test.nes: ネームテーブルの更新が無い場合でもスプライトがチラつく
+
 // スコアバーの点滅について (偶数番は左ネームテーブルだけを使用して上手く行く)
 // 奇数番の場合、VBLANK時に左ネームテーブルに設定し、スコアバーの表示が終わった後のスプライトゼロヒットで右ネームテーブルに変更する
 // https://forums.nesdev.org/viewtopic.php?t=21527 (日本語の記事も存在する)
@@ -17,12 +24,7 @@
 // start 0
 // end 152
 
-// CHR-ROMのサイズが0の場合はCHR-RAM(mallocで確保したバッファ)を使用する
-// CHR-RAMは書き込み可能だがCHR-ROMは不可なので注意が必要
-// SMBサポートの動画の未実装部分を確認する
-
-// ロードランナーの色がおかしい (パレットミラーリングがおかしいかも)
-// nestestを含むテストROMに挑戦する (https://github.com/christopherpow/nes-test-roms)
+// テストROMに挑戦する (https://github.com/christopherpow/nes-test-roms)
 // PPUレジスタの機能を確認し実装する
 
 // 左端8ピクセルのスプライトの非表示

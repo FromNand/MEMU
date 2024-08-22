@@ -20,12 +20,19 @@ ROM *load_rom(char *file_name) {
     if(rom->rom[0] != 'N' || rom->rom[1] != 'E' || rom->rom[2] != 'S' || rom->rom[3] != 0x1a) {
         error("Cannot find iNES signature\n");
     }
+    rom->program_rom = rom->rom + 16 + (((rom->rom[6] & 0x04) != 0) ? 512 : 0);
     rom->program_rom_size = 1024 * 16 * rom->rom[4];
-    rom->character_rom_size = 1024 * 8 * rom->rom[5];
-    rom->mirroring = (rom->rom[6] & 0x01) + ((rom->rom[6] & 0x08) >> 2);
-    rom->program_rom = rom->rom + 16 + ((rom->rom[6] & 0x04) ? 512 : 0);
     rom->character_rom = rom->program_rom + rom->program_rom_size;
+    rom->character_rom_size = 1024 * 8 * rom->rom[5];
+    rom->has_character_ram = rom->character_rom_size == 0;
+    rom->mirroring = (rom->rom[6] & 0x01) + ((rom->rom[6] & 0x08) >> 2);
     rom->mapper = (rom->rom[6] >> 4) + (rom->rom[7] & 0xf0);
+
+    if(rom->has_character_ram) {
+        static unsigned char character_ram[1024 * 8];
+        rom->character_rom = character_ram;
+        error("CHR-RAM is not supported\n");
+    }
 
     return rom;
 }
