@@ -240,12 +240,11 @@ unsigned char read_ppu_data(void) {
     } else if(between(0x2000, ppu_address, 0x3eff)) {
         buffer = nametable[mirror_nametable_address(ppu_address)];
     } else if(between(0x3f00, ppu_address, 0x3fff)) {
-        unsigned int nibble = ppu_address & 0xf;
-        if((ppu_address & 0x10) != 0 && (nibble == 0x0 || nibble == 0x4 || nibble == 0x8 || nibble == 0xc)) {
-            value = buffer = palette_table[(ppu_address - 0x10) & 0x1f];
-        } else {
-            value = buffer = palette_table[ppu_address & 0x1f];
+        unsigned int address = ppu_address & 0x1f;
+        if(address == 0x10 || address == 0x14 || address == 0x18 || address == 0x1c) {
+            address -= 0x10;
         }
+        value = buffer = palette_table[address];
         if(ppu_mask.gray_scale) {
             value = buffer = buffer & 0x30;
         }
@@ -265,19 +264,17 @@ void write_ppu_data(unsigned char value) {
     } else if(between(0x2000, ppu_address, 0x3eff)) {
         nametable[mirror_nametable_address(ppu_address)] = value;
     } else if(between(0x3f00, ppu_address, 0x3fff)) {
-        unsigned int nibble = ppu_address & 0xf;
-        if((ppu_address & 0x10) != 0 && (nibble == 0x0 || nibble == 0x4 || nibble == 0x8 || nibble == 0xc)) {
-            palette_table[(ppu_address - 0x10) & 0x1f] = value;
-        } else {
-            palette_table[ppu_address & 0x1f] = value;
+        unsigned int address = ppu_address & 0x1f;
+        if(address == 0x10 || address == 0x14 || address == 0x18 || address == 0x1c) {
+            address -= 0x10;
         }
+        palette_table[address] = value;
     } else {
         error("Invalid ppu write 0x%04X\n", ppu_address);
     }
     ppu_address += ppu_control.increment_address ? 32 : 1;
 }
 
-// FIXME
 bool is_sprite0_hit(void) {
     return oam_data[0] == scanline && oam_data[3] <= ppu_cycle && ppu_mask.render_background && ppu_mask.render_sprite;
 }
@@ -367,7 +364,6 @@ void render_sprite(void) {
             bool flip_horizontal = (attribute & 0x40) != 0;
             bool flip_vertical = (attribute & 0x80) != 0;
 
-            // FIXME
             // if(behind_background) {
             //     continue;
             // }
@@ -392,7 +388,6 @@ void render_sprite(void) {
     }
 }
 
-// FIXME
 void tick_ppu(unsigned int cycle) {
     ppu_cycle += cycle;
     if(ppu_cycle >= 341) {

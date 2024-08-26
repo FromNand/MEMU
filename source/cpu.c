@@ -343,7 +343,6 @@ void bpl(void) {
     branch(cpu.p.n == false);
 }
 
-// FIXME
 void _brk(void) {
     push16(cpu.pc + 2);
     push8(get_flag() | 0x10);
