@@ -9,6 +9,7 @@ extern unsigned int cpu_cycle;
 ROM *load_rom(char *file_name);
 void tick_ppu(unsigned int cycle);
 void init_ppu(void);
+void init_apu(void);
 void write_ppu_control(unsigned char value);
 void write_ppu_mask(unsigned char value);
 unsigned char read_ppu_status(void);
@@ -21,6 +22,7 @@ unsigned char read_ppu_data(void);
 void write_ppu_data(unsigned char value);
 unsigned char read_joypad(void);
 void write_joypad(unsigned char value);
+void write_square1(unsigned short address, unsigned char value);
 
 void tick(unsigned int cycle) {
     cpu_cycle += cycle;
@@ -30,6 +32,7 @@ void tick(unsigned int cycle) {
 void init_bus(char *file_name) {
     rom = load_rom(file_name);
     init_ppu();
+    init_apu();
 }
 
 unsigned char bus_read8(unsigned short address) {
@@ -77,6 +80,8 @@ void bus_write8(unsigned short address, unsigned char value) {
         write_ppu_data(value);
     } else if(between(0x2008, address, 0x3fff)) {
         bus_write8(address & 0x2007, value);
+    } else if(between(0x4000, address, 0x4003)) {
+        write_square1(address, value);
     } else if(address == 0x4014) {
         tick((cpu_cycle % 2 == 0) ? 1 : 2);
         for(int i = 0; i < 256; i++) {
@@ -85,11 +90,10 @@ void bus_write8(unsigned short address, unsigned char value) {
         }
     } else if(address == 0x4016) {
         write_joypad(value);
-    } else if(address == 0x4000 || address == 0x4001 || address == 0x4002 || address == 0x4003 || address == 0x4004 || \
+    } else if(address == 0x4004 || \
             address == 0x4005 || address == 0x4006 || address == 0x4007 || address == 0x4008 || address == 0x4009 || \
             address == 0x400a || address == 0x400b || address == 0x400c || address == 0x400d || address == 0x400e || \
             address == 0x400f || address == 0x4010 || address == 0x4011 || address == 0x4015 || address == 0x4017) {
-
     } else {
         error("Unsupported bus write 0x%04X\n", address);
     }

@@ -1,5 +1,6 @@
 #include "common.h"
 #include <gtk-3.0/gtk/gtk.h>
+#include <SDL2/SDL.h>
 
 // ***** チラつき問題 *****
 // 行ごとに背景タイルを表示するのがチラつきの原因だが、一括表示では分割スクロールができない
@@ -44,6 +45,7 @@ void open_file(GtkWidget *widget, gpointer data) {
     if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
         static guint id;
         if(id) g_source_remove(id);
+        SDL_CloseAudio();
         init_nes(gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
         id = g_idle_add(run_nes, NULL);
     }
@@ -141,6 +143,7 @@ gboolean show_fps(gpointer data) {
 
 int main(int argc, char **argv) {
     gtk_init(&argc, &argv);
+    SDL_Init(SDL_INIT_AUDIO);
 
     GtkWidget *menu_bar = gtk_menu_bar_new();
     GtkWidget *open_menu_item = gtk_menu_item_new_with_label("Open");
