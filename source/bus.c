@@ -23,6 +23,7 @@ void write_ppu_data(unsigned char value);
 unsigned char read_joypad(void);
 void write_joypad(unsigned char value);
 void write_square1(unsigned short address, unsigned char value);
+void write_square2(unsigned short address, unsigned char value);
 
 void tick(unsigned int cycle) {
     cpu_cycle += cycle;
@@ -82,6 +83,8 @@ void bus_write8(unsigned short address, unsigned char value) {
         bus_write8(address & 0x2007, value);
     } else if(between(0x4000, address, 0x4003)) {
         write_square1(address, value);
+    } else if(between(0x4004, address, 0x4007)) {
+        write_square2(address, value);
     } else if(address == 0x4014) {
         tick((cpu_cycle % 2 == 0) ? 1 : 2);
         for(int i = 0; i < 256; i++) {
