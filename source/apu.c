@@ -188,8 +188,71 @@ void write_triangle(unsigned short address, unsigned char value) {
     }
 }
 
+typedef struct {
+    float volume;
+    float hertz;
+    unsigned short shift_register;
+    unsigned char bit;
+} Noise;
+
+Noise noise;
+
+void noise_callback(void *userdata, Uint8 *stream, int len) {
+    static float phase = 0.0;
+    static float frequency = 44100.0;
+    Noise *note = userdata;
+    float *buffer = (float*)stream;
+    int sample_rate = len / sizeof(float);
+    for(int i = 0; i < sample_rate; i++) {
+        buffer[i] = (!(note->shift_register & 0x01)) * note->volume;
+        float last_phase = phase;
+        phase += note->hertz / frequency;
+        phase -= (int)phase;
+        if(last_phase > phase) {
+            bool bit0 = note->shift_register & 0x01;
+            bool bitn = (note->shift_register >> note->bit) & 0x01;
+            bool feedback = bit0 ^ bitn;
+            note->shift_register >>= 1;
+            note->shift_register = (note->shift_register & 0xbfff) + (feedback << 14);
+        }
+    }
+}
+
+void init_channel4(void) {
+    SDL_AudioSpec desired;
+    SDL_zero(desired);
+
+    noise.volume = 0.0;
+    noise.hertz = 0.0;
+    noise.shift_register = 1;
+    noise.bit = 1;
+
+    desired.callback = noise_callback;
+    desired.channels = 1;
+    desired.format = AUDIO_F32;
+    desired.freq = 44100;
+    desired.samples = 4096;
+    desired.userdata = &noise;
+
+    SDL_AudioDeviceID device = SDL_OpenAudioDevice(NULL, 0, &desired, NULL, 0);
+    SDL_PauseAudioDevice(device, 0);
+}
+
+void write_noise(unsigned short address, unsigned char value) {
+    if(address == 0x400c) {
+        noise.volume = value & 0x0f;
+    } else if(address == 0x400e) {
+        noise.bit = (value & 0x80) == 0 ? 1 : 6;
+    } else if(address == 0x400f) {
+
+    } else {
+        error("Invalid write to noise\n");
+    }
+}
+
 void init_apu(void) {
     init_channel1();
     init_channel2();
     init_channel3();
+    init_channel4();
 }
