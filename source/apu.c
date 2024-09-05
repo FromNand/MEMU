@@ -132,7 +132,64 @@ void write_square2(unsigned short address, unsigned char value) {
     }
 }
 
+typedef struct {
+    float hertz;
+} TriangleWave;
+
+TriangleWave triangle;
+
+void triangle_callback(void *userdata, Uint8 *stream, int len) {
+    static float phase = 0.0;
+    static float frequency = 44100.0;
+    TriangleWave *note = userdata;
+    float *buffer = (float*)stream;
+    int sample_rate = len / sizeof(float);
+    for(int i = 0; i < sample_rate; i++) {
+        if(phase < 0.5) {
+            buffer[i] = phase;
+        } else {
+            buffer[i] = 1 - phase;
+        }
+        buffer[i] = (buffer[i] - 0.25) * 4;
+        phase += note->hertz / frequency;
+        phase -= (int)phase;
+    }
+}
+
+void init_channel3(void) {
+    SDL_AudioSpec desired;
+    SDL_zero(desired);
+
+    triangle.hertz = 0.0;
+
+    desired.callback = triangle_callback;
+    desired.channels = 1;
+    desired.format = AUDIO_F32;
+    desired.freq = 44100;
+    desired.samples = 4096;
+    desired.userdata = &triangle;
+
+    SDL_AudioDeviceID device = SDL_OpenAudioDevice(NULL, 0, &desired, NULL, 0);
+    SDL_PauseAudioDevice(device, 0);
+}
+
+void write_triangle(unsigned short address, unsigned char value) {
+    static unsigned char frequency_low, frequency_high;
+    if(address == 0x4008) {
+
+    } else if(address == 0x400a) {
+        frequency_low = value;
+        triangle.hertz = CPU_HERTZ / (16 * ((frequency_low + (frequency_high << 8)) + 1));
+    } else if(address == 0x400b) {
+        frequency_high = value & 0x07;
+        triangle.hertz = CPU_HERTZ / (16 * ((frequency_low + (frequency_high << 8)) + 1));
+    } else {
+        error("Invalid write to triangle\n");
+    }
+}
+
 void init_apu(void) {
     init_channel1();
     init_channel2();
+    init_channel3();
 }
