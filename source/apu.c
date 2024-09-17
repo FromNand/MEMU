@@ -179,10 +179,10 @@ void write_triangle(unsigned short address, unsigned char value) {
 
     } else if(address == 0x400a) {
         frequency_low = value;
-        triangle.hertz = CPU_HERTZ / (16 * ((frequency_low + (frequency_high << 8)) + 1));
+        triangle.hertz = CPU_HERTZ / (32 * ((frequency_low + (frequency_high << 8)) + 1));
     } else if(address == 0x400b) {
         frequency_high = value & 0x07;
-        triangle.hertz = CPU_HERTZ / (16 * ((frequency_low + (frequency_high << 8)) + 1));
+        triangle.hertz = CPU_HERTZ / (32 * ((frequency_low + (frequency_high << 8)) + 1));
     } else {
         error("Invalid write to triangle\n");
     }
