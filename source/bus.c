@@ -27,6 +27,11 @@ void write_square2(unsigned short address, unsigned char value);
 void write_triangle(unsigned short address, unsigned char value);
 void write_noise(unsigned short address, unsigned char value);
 
+extern void (*init_bank)(void);
+extern unsigned char (*read_bank1)(unsigned short address);
+extern unsigned char (*read_bank2)(unsigned short address);
+extern void (*write_bank)(unsigned short address, unsigned char value);
+
 void tick(unsigned int cycle) {
     cpu_cycle += cycle;
     tick_ppu(cycle * 3);
@@ -34,6 +39,7 @@ void tick(unsigned int cycle) {
 
 void init_bus(char *file_name) {
     rom = load_rom(file_name);
+    init_bank();
     init_ppu();
     init_apu();
 }
@@ -51,12 +57,10 @@ unsigned char bus_read8(unsigned short address) {
         return bus_read8(address & 0x2007);
     } else if(address == 0x4016) {
         return read_joypad();
-    } else if(between(0x8000, address, 0xffff)) {
-        if(rom->program_rom_size == 0x4000) {
-            return rom->program_rom[address & 0x3fff];
-        } else {
-            return rom->program_rom[address - 0x8000];
-        }
+    } else if(between(0x8000, address, 0xbfff)) {
+        return read_bank1(address);
+    } else if(between(0xc000, address, 0xffff)) {
+        return read_bank2(address);
     } else if(address == 0x4017) {
         return 0;
     } else {
@@ -99,6 +103,8 @@ void bus_write8(unsigned short address, unsigned char value) {
         }
     } else if(address == 0x4016) {
         write_joypad(value);
+    } else if(between(0x8000, address, 0xffff)) {
+        write_bank(address, value);
     } else if(address == 0x4010 || address == 0x4011 || address == 0x4015 || address == 0x4017) {
 
     } else {
